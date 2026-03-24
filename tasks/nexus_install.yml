@@ -64,7 +64,23 @@
 
 - name: Register nexus package name
   ansible.builtin.set_fact:
-    nexus_package: nexus-{{ nexus_version }}-unix.tar.gz
+    nexus_package: >-
+      {{
+        (nexus_local_package_file | length > 0)
+        | ternary(nexus_local_package_file, 'nexus-' ~ nexus_version ~ '-unix.tar.gz')
+      }}
+
+- name: Upload local nexus package from role files
+  ansible.builtin.copy:
+    src: "{{ nexus_local_package_file }}"
+    dest: "{{ nexus_download_dir }}/{{ nexus_package }}"
+    owner: root
+    group: root
+    mode: "0644"
+  when: nexus_local_package_file | length > 0
+  check_mode: false
+  notify:
+    - nexus-service-stop
 
 - name: Download nexus_package
   ansible.builtin.get_url:
@@ -80,6 +96,7 @@
   until: download_status.status_code == 200
   retries: "{{ nexus_download_retries }}"
   delay: "{{ nexus_download_delay }}"
+  when: nexus_local_package_file | length == 0
   notify:
     - nexus-service-stop
 
@@ -108,7 +125,7 @@
   ansible.builtin.unarchive:
     src: "{{ nexus_download_dir }}/{{ nexus_package }}"
     dest: "{{ nexus_installation_dir }}"
-    creates: "{{ nexus_installation_dir }}/nexus-{{ nexus_version }}"
+    creates: "{{ nexus_installation_dir }}/{{ nexus_install_dir_name }}"
     copy: false
     mode: "0755"
   notify:
@@ -116,13 +133,13 @@
 
 - name: Ensure proper ownership of nexus installation directory
   ansible.builtin.file:
-    path: "{{ nexus_installation_dir }}/nexus-{{ nexus_version }}"
+    path: "{{ nexus_installation_dir }}/{{ nexus_install_dir_name }}"
     recurse: true
     mode: u=rwX,g=rX,o=rX
 
 - name: Create context for nexus binary on selinux systems.
   community.general.sefcontext:
-    target: "{{ nexus_installation_dir }}/nexus-{{ nexus_version }}/bin/nexus"
+    target: "{{ nexus_installation_dir }}/{{ nexus_install_dir_name }}/bin/nexus"
     setype: bin_t
     state: present
   when: ansible_selinux.status is defined and ansible_selinux.status == "enabled"
@@ -131,7 +148,7 @@
 - name: Update symlink nexus-latest
   ansible.builtin.file:
     path: "{{ nexus_installation_dir }}/nexus-latest"
-    src: "{{ nexus_installation_dir }}/nexus-{{ nexus_version }}"
+    src: "{{ nexus_installation_dir }}/{{ nexus_install_dir_name }}"
     owner: "{{ nexus_os_user }}"
     group: "{{ nexus_os_group }}"
     state: link
@@ -327,6 +344,7 @@
     dest: "{{ nexus_installation_dir }}/nexus-latest/bin/nexus.rc"
     regexp: .*run_as_user=.*
     line: run_as_user="{{ nexus_os_user }}"
+    create: true
   notify:
     - nexus-service-stop
 
@@ -445,7 +463,7 @@
 - name: Install plugins from remote source
   ansible.builtin.get_url:
     url: "{{ item }}"
-    dest: "{{ nexus_installation_dir }}/nexus-{{ nexus_version }}/deploy/"
+    dest: "{{ nexus_installation_dir }}/{{ nexus_install_dir_name }}/deploy/"
     owner: root
     group: root
     mode: "0644"

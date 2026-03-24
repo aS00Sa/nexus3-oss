@@ -3,9 +3,12 @@
   hosts: nexus
   become: true
   vars:
-    nexus_admin_password: "changeme"   # лучше через ansible-vault
-    nexus_public_hostname: "nexus.example.local"
-    nexus_timezone: "UTC"
+    nexus_version: "3.90.2-06"
+    nexus_pkg_suffix: "linux-x86_64"
+    nexus_local_package_file: "nexus-{{ nexus_version }}-{{ nexus_pkg_suffix }}.tar.gz"
+    nexus_install_dir_name: "nexus-{{ nexus_version }}"
+    nexus_admin_password: "nexus1234"   # лучше через ansible-vault
+    nexus_public_hostname: "nexus.btnxlocal.ru"
+    nexus_timezone: "UTC+3"
   roles:
-    - role: ansible-role.java
-    - role: ansible-role.nexus3-oss
+    - role: ansible-role-nexus3-oss

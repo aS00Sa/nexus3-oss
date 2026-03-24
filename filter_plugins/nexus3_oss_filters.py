@@ -68,7 +68,17 @@ class FilterModule(object):
                 f"The element parameter must be one of {','.join(valid_elements)}"
             )
 
-        return self._get_script_run_results(data)[element]
+        result = self._get_script_run_results(data)
+        if element in result:
+            return result[element]
+
+        # Be defensive when a script returns valid JSON without our expected keys.
+        defaults = {
+            "error": False,
+            "changed": False,
+            "action_details": "Script returned JSON without expected keys",
+        }
+        return defaults[element]
 
     def _get_script_run_results(self, data):
 
@@ -98,6 +108,8 @@ class FilterModule(object):
         try:
             result = json.loads(raw_result)
             if result is None:
+                raise ValueError
+            if not isinstance(result, dict):
                 raise ValueError
         except (ValueError, TypeError):
             """This is not a result in json format or result key is absent"""

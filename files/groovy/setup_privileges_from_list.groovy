@@ -11,7 +11,7 @@ List<Map<String, String>> actionDetails = []
 Map scriptResults = [changed: false, error: false]
 scriptResults.put('action_details', actionDetails)
 
-authManager = security.getSecuritySystem().getAuthorizationManager(UserManager.DEFAULT_SOURCE)
+authManager = security.securitySystem.getAuthorizationManager(UserManager.DEFAULT_SOURCE)
 
 parsed_args.each { privilegeDef ->
 

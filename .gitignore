@@ -9,3 +9,10 @@ molecule/**/.pytest_cache
 README.md.orig.*
 README.md.toc.*
 *.pyc
+.vagrant
+*.log
+hosts*
+inventory*.ini
+*.htpasswd
+playbooks\generated\*
+playbooks/generated/*

@@ -17,8 +17,8 @@ parsed_args.each { currentUserDef ->
     Map<String, String> currentResult = [username: currentUserDef.username, state: state, roles: currentUserDef.roles.join(', ')]
 
     try {
-        User user = security.getSecuritySystem().getUser(currentUserDef.username,"LDAP")
-        authManager = security.getSecuritySystem().getAuthorizationManager(UserManager.DEFAULT_SOURCE)
+        User user = security.securitySystem.getUser(currentUserDef.username,"LDAP")
+        authManager = security.securitySystem.getAuthorizationManager(UserManager.DEFAULT_SOURCE)
         currentResult.put('status', 'roles unchanged')
         currentUserDef.roles.each { role ->
             log.info("RoleID : " + authManager.getRole(role).roleId.toString())
