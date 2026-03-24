@@ -1,20 +1,20 @@
-[![Build Status](https://travis-ci.com/ansible-ThoTeam/nexus3-oss.svg?branch=main)](https://app.travis-ci.com/github/ansible-ThoTeam/nexus3-oss)
-[![GitHub release (latest by date)](https://img.shields.io/github/v/release/ansible-ThoTeam/nexus3-oss)](https://github.com/ansible-ThoTeam/nexus3-oss/releases/latest)
-[![GitHub commits since latest release](https://img.shields.io/github/commits-since/ansible-ThoTeam/nexus3-oss/latest)](https://github.com/ansible-ThoTeam/nexus3-oss/commits/main)
-[![Ansible Role](https://img.shields.io/ansible/role/d/ansible-ThoTeam/nexus3-oss?label=Galaxy%20downloads)](https://galaxy.ansible.com/ui/standalone/roles/ansible-ThoTeam/nexus3-oss/)
-[![GitHub contributors](https://img.shields.io/github/contributors/ansible-ThoTeam/nexus3-oss)](https://github.com/ansible-ThoTeam/nexus3-oss/graphs/contributors)
-[![GitHub licence](https://img.shields.io/github/license/ansible-ThoTeam/nexus3-oss)](https://github.com/ansible-ThoTeam/nexus3-oss/blob/main/LICENSE.md)
+[![Build Status](https://nexus-ci.com/ansible-role/nexus3-oss.svg?branch=main)](https://app.nexus-ci.com/github/ansible-role/nexus3-oss)
+[![GitHub release (latest by date)](https://img.shields.io/github/v/release/ansible-role/nexus3-oss)](https://github.com/aS00Sa/nexus3-oss/releases/latest)
+[![GitHub commits since latest release](https://img.shields.io/github/commits-since/ansible-role/nexus3-oss/latest)](https://github.com/aS00Sa/nexus3-oss/commits/main)
+[![Ansible Role](https://img.shields.io/ansible/role/d/ansible-role/nexus3-oss?label=Galaxy%20downloads)](https://galaxy.ansible.com/ui/standalone/roles/ansible-role/nexus3-oss/)
+[![GitHub contributors](https://img.shields.io/github/contributors/ansible-role/nexus3-oss)](https://github.com/aS00Sa/nexus3-oss/graphs/contributors)
+[![GitHub licence](https://img.shields.io/github/license/ansible-role/nexus3-oss)](https://github.com/aS00Sa/nexus3-oss/blob/main/LICENSE.md)
 # Ansible Role: Nexus 3 OSS
 
 This role installs and configures Nexus Repository Manager OSS version 3.x.
 
 All configuration can be updated by re-running the role, except for the [blobstores](https://help.sonatype.com/display/NXRM3/Repository+Management#RepositoryManagement-BlobStores) related settings, which are immutable in nexus.
 
-<img src="https://docs.travis-ci.com/images/travis-mascot-200px.png" alt="travis-ci.com logo" width="50" height="50" /> This role's CI is proudly using OSS credits allocated by https://travis.com
+<img src="https://docs.nexus-ci.com/images/nexus-mascot-200px.png" alt="nexus-ci.com logo" width="50" height="50" /> This role's CI is proudly using OSS credits allocated by https://nexus.com
 
 ## Table of Contents
 **Note**: TOC links will not function appropriately when viewing it from ansible galaxy site.
-[View it on github](https://github.com/ansible-ThoTeam/nexus3-oss/blob/master/README.md#table-of-contents)
+[View it on github](https://github.com/aS00Sa/nexus3-oss/blob/master/README.md#table-of-contents)
 
 _(Created with [gh-md-toc](https://github.com/ekalinin/github-markdown-toc))_
 <!-- Run gh-md-toc --insert README.md to update -->
@@ -100,7 +100,7 @@ We would like to thank the original authors for the work done.
 
 - Fairly Up-to-date version of ansible. We follow ansible versions during maintenance/development and will take advantage
 of new features if needed (and update meta/main.yml for minimum version)
-- Compatible OS. This role is tested through molecule on travis CI for CentOS 8, Ubuntu Bionic (18.04),
+- Compatible OS. This role is tested through molecule on nexus CI for CentOS 8, Ubuntu Bionic (18.04),
  and Debian buster. Other molecule scenarios can be played locally for CentOS 7, Ubuntu Xenial (16.04), and Debian stretch
 - Rsync has to be installed on the target machine (it is not needed on the host running ansible if different)
 - `jmespath` library needs to be installed on the host running the playbook (needed for the `json_query` filter). See `requirements.txt`
@@ -497,7 +497,7 @@ Example LDAP config for simple authentication (using a DSA account) + groups map
         ldap_user_memberof_attribute: 'memberOf'
 ```
 
-@nliebelt proposed a configuration with explanations in an issue to [configure nexus for Active Directory](https://github.com/ansible-ThoTeam/nexus3-oss/issues/341)
+@nliebelt proposed a configuration with explanations in an issue to [configure nexus for Active Directory](https://github.com/aS00Sa/nexus3-oss/issues/341)
 
 ### Privileges
 ```yaml
@@ -639,7 +639,7 @@ Delete the default blobstore from the nexus install initial default configuratio
 
 [Blobstores](https://help.sonatype.com/display/NXRM3/Repository+Management#RepositoryManagement-BlobStores) to create. A blobstore path and a repository blobstore cannot be updated after initial creation (any update here will be ignored on re-provisionning).
 
-Configuring blobstore on S3 is provided as a convenience and is not part of the automated tests we run on travis. Please note that storing on S3 is only recommended for instances deployed on AWS.
+Configuring blobstore on S3 is provided as a convenience and is not part of the automated tests we run on nexus. Please note that storing on S3 is only recommended for instances deployed on AWS.
 
 ```yaml
     nexus_repos_maven_proxy:
@@ -788,7 +788,7 @@ nexus_rut_auth_header: "CUSTOM_HEADER"
 ### Scheduled tasks
 
 These are quick examples and instruction to setup scheduled tasks. For in depth information on available tasks types
-and schedule types, please refer to [the specific section in the repo wiki](https://github.com/ansible-ThoTeam/nexus3-oss/wiki/Scheduled-tasks-configuration)
+and schedule types, please refer to [the specific section in the repo wiki](https://github.com/aS00Sa/nexus3-oss/wiki/Scheduled-tasks-configuration)
 
 ```yaml
     nexus_scheduled_tasks: []
@@ -1008,8 +1008,8 @@ ansible-playbook -i your/inventory.ini your_playbook.yml -e nexus_blobstores_rec
 ## Dependencies
 
 The java and httpd requirements /can/ be fulfilled with the following galaxy roles :
-  - [geerlingguy.java](https://galaxy.ansible.com/geerlingguy/java/)
-  - [geerlingguy.apache](https://galaxy.ansible.com/geerlingguy/apache/)
+  - [ansible-role.java](https://galaxy.ansible.com/ansible-role/java/)
+  - [ansible-role.apache](https://galaxy.ansible.com/ansible-role/apache/)
 
 Feel free to use them or implement your own install scenario at your convenience.
 
@@ -1136,12 +1136,12 @@ Feel free to use them or implement your own install scenario at your convenience
   roles:
 
 
-    - { role: geerlingguy.java, vars: See role doc for your distribution/version }
+    - { role: ansible-role.java, vars: See role doc for your distribution/version }
     # Debian/Ubuntu only
-    # - { role: geerlingguy.apache, apache_create_vhosts: no, apache_mods_enabled: ["proxy.load", "proxy_http.load", "headers.load", "ssl.load", "rewrite.load"], apache_remove_default_vhost: true, tags: ["geerlingguy.apache"] }
+    # - { role: ansible-role.apache, apache_create_vhosts: no, apache_mods_enabled: ["proxy.load", "proxy_http.load", "headers.load", "ssl.load", "rewrite.load"], apache_remove_default_vhost: true, tags: ["ansible-role.apache"] }
     # RedHat/CentOS only
-    - { role: geerlingguy.apache, apache_create_vhosts: no, apache_remove_default_vhost: true, tags: ["geerlingguy.apache"] }
-    - { role: ansible-thoteam.nexus3-oss, tags: ['ansible-thoteam.nexus3-oss'] }
+    - { role: ansible-role.apache, apache_create_vhosts: no, apache_remove_default_vhost: true, tags: ["ansible-role.apache"] }
+    - { role: ansible-role.nexus3-oss, tags: ['ansible-role.nexus3-oss'] }
 ```
 
 ## Development, Contribution and Testing
@@ -1157,14 +1157,14 @@ If you wish to contribute:
   - `fix/<someBugFix>` for bug fixes
   - `docfix/<someDocFix>` for documentation only fixes
 - If starting an important feature change, open a pull request early describing what you want to do so we can discuss it if needed. This will prevent you from doing a lot of hard work on a lot of code for changes that we cannot finally merge.
-- If there are build error on your pull request, have a look at the travis log and fix the relevant errors.
+- If there are build error on your pull request, have a look at the nexus log and fix the relevant errors.
 
 Moreover, if you have time to devote for code review, merge for realeases, etc... drop an email to contact@thoteam.com to get in touch.
 
 
 ### Testing
 
-This role includes tests and CI integration through travis. At time being, we test:
+This role includes tests and CI integration through nexus. At time being, we test:
 * groovy scripts syntax
 * yaml syntax and coding standard (yamllint)
 * ansible good practices (ansible lint)
@@ -1187,13 +1187,13 @@ If you submit changes to groovy files, please run the groovy syntax check locall
 ```bash
 ./tests/test_groovySyntax.sh
 ```
-This will ensure you push groovy files with correct syntax limiting the number of check errors on travis.
+This will ensure you push groovy files with correct syntax limiting the number of check errors on nexus.
 
 You will need the groovy package installed locally to run this test.
 
 #### Molecule default-xxxx scenarii
 
-The role is tested on travis with [molecule](https://pypi.python.org/pypi/molecule). You can run these tests locally. The best way to achieve this is through a python virtualenv. You can find some more details in [requirements.txt](requirements.txt).
+The role is tested on nexus with [molecule](https://pypi.python.org/pypi/molecule). You can run these tests locally. The best way to achieve this is through a python virtualenv. You can find some more details in [requirements.txt](requirements.txt).
 ```bash
 # Note: the following path should be outside the working dir
 virtualenv /path/to/some/pyenv
@@ -1227,7 +1227,7 @@ GNU GPLv3
 
 ## Author Information
 
-See: https://github.com/ansible-ThoTeam
+See: https://github.com/ansible-role
 
 
 [Lionel Lecha]: https://www.linkedin.com/in/lionellecha/

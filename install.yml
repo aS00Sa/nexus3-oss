@@ -1,0 +1,11 @@
+---
+- name: Deploy Nexus OSS
+  hosts: nexus
+  become: true
+  vars:
+    nexus_admin_password: "changeme"   # лучше через ansible-vault
+    nexus_public_hostname: "nexus.example.local"
+    nexus_timezone: "UTC"
+  roles:
+    - role: ansible-role.java
+    - role: ansible-role.nexus3-oss

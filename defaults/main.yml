@@ -40,7 +40,7 @@ nexus_backup_dir_create: true # Shall we create the dir, or do you already have 
 nexus_restore_log: "{{ nexus_backup_dir }}/nexus-restore.log"
 nexus_backup_configure: false # Shall we configure backup ?
 ## For next schedule vars, see related schedule tasks settings
-## https://github.com/ansible-ThoTeam/nexus3-oss/wiki/Scheduled-tasks-configuration#schedule-types-and-related-settings
+## https://github.com/aS00Sa/nexus3-oss/wiki/Scheduled-tasks-configuration#schedule-types-and-related-settings
 nexus_backup_schedule_type: cron
 nexus_backup_cron: "0 0 21 * * ?" # See cron expression in nexus create task GUI
 # nexus_backup_start_date_time: "yyyy-MM-dd'T'HH:mm:ss"

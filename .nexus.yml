@@ -15,17 +15,17 @@ cache:
 
 env:
   global:
-    - TRAVIS_BUILD_DIR=/home/travis/build/ansible-thoteam.nexus3-oss
+    - NEXUS_BUILD_DIR=/home/nexus/build/ansible-role.nexus3-oss
 
 services:
   - docker
 
 before_install:
   - cd ..
-  - mv nexus3-oss $TRAVIS_BUILD_DIR
+  - mv nexus3-oss $NEXUS_BUILD_DIR
   - cd ..
-  - rmdir ansible-ThoTeam
-  - cd $TRAVIS_BUILD_DIR
+  - rmdir ansible-role
+  - cd $NEXUS_BUILD_DIR
 
 install:
   - pip install --upgrade pip

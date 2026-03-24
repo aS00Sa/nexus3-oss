@@ -68,7 +68,7 @@ def test_apt_package_upload(host: testinfra.host.Host):
     # Copy debian test package
     host.ansible(
         "get_url",
-        "url=https://github.com/ansible-ThoTeam/nexushello-apt-package/releases"
+        "url=https://github.com/aS00Sa/nexushello-apt-package/releases"
         f"/download/v{nexushello_version}/nexushello_{nexushello_version}-{nexushello_deb_build}_all.deb dest=/tmp",
         check=False,
     )

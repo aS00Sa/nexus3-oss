@@ -1,6 +1,6 @@
 ---
 galaxy_info:
-  author: ansible-ThoTeam
+  author: ansible-role
   description: Nexus Repository Manager 3.x (Sonatype)
   company: ThoTeam
 
