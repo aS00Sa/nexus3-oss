@@ -69,6 +69,13 @@ class FilterModule(object):
             )
 
         result = self._get_script_run_results(data)
+        if (
+            element == "action_details"
+            and result.get("status") == "unsupported_capability"
+            and result.get("skipped") is True
+        ):
+            return "Capability unsupported, skipped"
+
         if element in result:
             return result[element]
 
