@@ -41,5 +41,54 @@
         member_repos:
           - npm-hosted
           - npm-proxy
+
+    # GitLab CI user for Docker registry access (bearer token realm).
+    # This user will be created as a local Nexus account.
+    gitlab_ci_nexus_username: "gitlab-ci"
+    gitlab_ci_nexus_password: "CHANGE_ME"
+
+    # Docker security model: enable login/search + allow push/pull to docker-hosted.
+    nexus_content_selectors:
+      - name: docker-login
+        description: Selector for docker login privilege
+        search_expression: format == "docker" and path=~"/v2/"
+      - name: docker-hosted-all
+        description: All docker paths within docker-hosted
+        search_expression: format == "docker" and path=~"/v2/"
+
+    nexus_privileges:
+      - name: docker-login-search-all
+        type: repository-content-selector
+        contentSelector: docker-login
+        repository: "*"
+        actions:
+          - read
+          - browse
+      - name: docker-hosted-rw
+        type: repository-content-selector
+        contentSelector: docker-hosted-all
+        repository: docker-hosted
+        actions:
+          - read
+          - browse
+          - add
+          - edit
+
+    nexus_roles:
+      - name: gitlab-ci
+        id: gitlab-ci
+        description: GitLab CI access to docker-hosted
+        privileges:
+          - docker-login-search-all
+          - docker-hosted-rw
+
+    nexus_local_users:
+      - username: "{{ gitlab_ci_nexus_username }}"
+        first_name: GitLab
+        last_name: CI
+        email: gitlab-ci@example.local
+        password: "{{ gitlab_ci_nexus_password }}"
+        roles:
+          - gitlab-ci
   roles:
     - role: ansible-role-nexus3-oss
