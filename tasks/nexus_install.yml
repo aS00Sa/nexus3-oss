@@ -560,6 +560,39 @@
       See https://github.com/aS00Sa/nexus3-oss/blob/master/README.md#change-admin-password-after-first-install
   when: current_nexus_admin_password is not defined
 
+- name: Check Nexus EULA acceptance state
+  ansible.builtin.uri:
+    url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}{{ nexus_api_context_path }}service/rest/v1/system/eula"
+    method: GET
+    user: admin
+    password: "{{ current_nexus_admin_password }}"
+    force_basic_auth: true
+    validate_certs: "{{ nexus_api_validate_certs }}"
+    status_code: 200, 404
+    return_content: true
+  register: nexus_eula_get
+  check_mode: false
+  changed_when: false
+
+- name: Accept Nexus EULA if not accepted yet
+  ansible.builtin.uri:
+    url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}{{ nexus_api_context_path }}service/rest/v1/system/eula"
+    method: POST
+    user: admin
+    password: "{{ current_nexus_admin_password }}"
+    force_basic_auth: true
+    validate_certs: "{{ nexus_api_validate_certs }}"
+    status_code: 200, 201, 204
+    body_format: json
+    body:
+      accepted: true
+      disclaimer: "{{ nexus_eula_get.json.disclaimer }}"
+  when:
+    - (nexus_eula_get.status | default(0)) == 200
+    - nexus_eula_get.json is defined
+    - (nexus_eula_get.json.accepted | default(true)) | bool == false
+  check_mode: false
+
 - name: Force (re-)registration of groovy scripts (purge reference dir)
   ansible.builtin.file:
     path: "{{ nexus_data_dir }}/groovy-raw-scripts"
