@@ -10,5 +10,36 @@
     nexus_admin_password: "nexus1234"   # лучше через ansible-vault
     nexus_public_hostname: "nexus.btnxlocal.ru"
     nexus_timezone: "UTC+3"
+    nexus_ldap_realm: false
+    nexus_docker_bearer_token_realm: true
+    nexus_npm_bearer_token_realm: false
+    nexus_config_docker: true
+    nexus_repos_docker_proxy:
+      - name: docker-proxy
+        http_port: "{{ nexus_docker_proxy_port }}"
+        remote_url: https://registry-1.docker.io
+        index_type: HUB
+    nexus_repos_docker_hosted:
+      - name: docker-hosted
+        http_port: "{{ nexus_docker_hosted_port }}"
+    nexus_repos_docker_group:
+      - name: docker-group
+        http_port: "{{ nexus_docker_group_port }}"
+        member_repos:
+          - docker-hosted
+          - docker-proxy
+
+    nexus_config_npm: true
+    nexus_repos_npm_proxy:
+      - name: npm-proxy
+        remote_url: https://registry.npmjs.org
+    nexus_repos_npm_hosted:
+      - name: npm-hosted
+        write_policy: allow
+    nexus_repos_npm_group:
+      - name: npm-group
+        member_repos:
+          - npm-hosted
+          - npm-proxy
   roles:
     - role: ansible-role-nexus3-oss

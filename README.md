@@ -113,6 +113,21 @@ of new features if needed (and update meta/main.yml for minimum version)
 
 (see [Dependencies](#dependencies) section below for matching roles on galaxy)
 
+1. **Перед запуском деплоя** — виртуальное окружение и зависимости:
+
+   ```bash
+   python3 -m venv .venv
+   source .venv/bin/activate
+   pip install -U pip
+   pip install -r requirements.txt
+
+   vi inventory.ini
+
+   ANSIBLE_CONFIG="$PWD/ansible.cfg" ANSIBLE_STDOUT_CALLBACK=default \
+ansible-playbook -i inventory.ini install.yml -u root \
+--private-key ~/.ssh/id_ed25519 -vvv 2>&1 | tee nexus-$(date +%Y%m%d-%H%M).log
+   ```
+
 ## Role Variables
 
 Ansible variables, along with the default values (see `default/main.yml`) :
