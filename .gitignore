@@ -16,3 +16,16 @@ inventory*.ini
 *.htpasswd
 playbooks\generated\*
 playbooks/generated/*
+*.zip
+*.gz
+*.bz2
+*.rar
+*.tar
+*.tgz
+*.tbz2
+*.txz
+*.tzst
+*.7z
+*.xz
+*.zst
+*.zstd
