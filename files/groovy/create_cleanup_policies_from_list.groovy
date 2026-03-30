@@ -7,10 +7,37 @@ import java.util.concurrent.TimeUnit
 
 import org.sonatype.nexus.cleanup.storage.CleanupPolicy
 import org.sonatype.nexus.cleanup.storage.CleanupPolicyStorage
-import static org.sonatype.nexus.repository.search.DefaultComponentMetadataProducer.IS_PRERELEASE_KEY
-import static org.sonatype.nexus.repository.search.DefaultComponentMetadataProducer.LAST_BLOB_UPDATED_KEY
-import static org.sonatype.nexus.repository.search.DefaultComponentMetadataProducer.LAST_DOWNLOADED_KEY
-import static org.sonatype.nexus.repository.search.DefaultComponentMetadataProducer.REGEX_KEY;
+
+// Nexus internals moved these constants between versions.
+// Resolve them dynamically to keep this script compatible.
+def resolveCriteriaKey = { String className, String fieldName, String fallback ->
+    try {
+        return String.valueOf(Class.forName(className).getField(fieldName).get(null))
+    } catch (Throwable ignored) {
+        return fallback
+    }
+}
+
+final String IS_PRERELEASE_KEY = resolveCriteriaKey(
+        'org.sonatype.nexus.repository.search.DefaultComponentMetadataProducer',
+        'IS_PRERELEASE_KEY',
+        'isPrerelease'
+)
+final String LAST_BLOB_UPDATED_KEY = resolveCriteriaKey(
+        'org.sonatype.nexus.repository.search.DefaultComponentMetadataProducer',
+        'LAST_BLOB_UPDATED_KEY',
+        'lastBlobUpdated'
+)
+final String LAST_DOWNLOADED_KEY = resolveCriteriaKey(
+        'org.sonatype.nexus.repository.search.DefaultComponentMetadataProducer',
+        'LAST_DOWNLOADED_KEY',
+        'lastDownloaded'
+)
+final String REGEX_KEY = resolveCriteriaKey(
+        'org.sonatype.nexus.repository.search.DefaultComponentMetadataProducer',
+        'REGEX_KEY',
+        'regex'
+)
 
 
 CleanupPolicyStorage cleanupPolicyStorage = container.lookup(CleanupPolicyStorage.class.getName())
