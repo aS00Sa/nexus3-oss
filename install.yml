@@ -22,6 +22,8 @@
     nexus_repos_docker_hosted:
       - name: docker-hosted
         http_port: "{{ nexus_docker_hosted_port }}"
+        cleanup_policies:
+          - docker_dev_aggressive_cleanup
     nexus_repos_docker_group:
       - name: docker-group
         http_port: "{{ nexus_docker_group_port }}"
@@ -41,6 +43,17 @@
         member_repos:
           - npm-hosted
           - npm-proxy
+
+    # Aggressive cleanup only for docker-hosted dev tags.
+    nexus_repos_cleanup_policies:
+      - name: docker_dev_aggressive_cleanup
+        format: docker
+        mode:
+        notes: Cleanup for docker-hosted images with -dev tag suffix
+        criteria:
+          lastBlobUpdated: 14
+          lastDownloaded: 14
+          regexKey: ".*-dev$"
 
     # GitLab CI user for Docker registry access (bearer token realm).
     # This user will be created as a local Nexus account.
