@@ -81,6 +81,9 @@
         privileges:
           - docker-login-search-all
           - docker-hosted-rw
+        roles:
+          - developers
+          - nx-admin
 
     nexus_local_users:
       - username: "{{ gitlab_ci_nexus_username }}"
@@ -89,6 +92,8 @@
         email: gitlab-ci@example.local
         password: "{{ gitlab_ci_nexus_password }}"
         roles:
+          - developers
           - gitlab-ci
+          - nx-admin
   roles:
     - role: ansible-role-nexus3-oss
