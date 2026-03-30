@@ -3,6 +3,7 @@
 import com.google.common.collect.Maps
 import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
+import groovy.transform.Field
 import java.util.concurrent.TimeUnit
 
 import org.sonatype.nexus.cleanup.storage.CleanupPolicy
@@ -18,22 +19,22 @@ def resolveCriteriaKey = { String className, String fieldName, String fallback -
     }
 }
 
-final String IS_PRERELEASE_KEY = resolveCriteriaKey(
+@Field final String IS_PRERELEASE_KEY = resolveCriteriaKey(
         'org.sonatype.nexus.repository.search.DefaultComponentMetadataProducer',
         'IS_PRERELEASE_KEY',
         'isPrerelease'
 )
-final String LAST_BLOB_UPDATED_KEY = resolveCriteriaKey(
+@Field final String LAST_BLOB_UPDATED_KEY = resolveCriteriaKey(
         'org.sonatype.nexus.repository.search.DefaultComponentMetadataProducer',
         'LAST_BLOB_UPDATED_KEY',
         'lastBlobUpdated'
 )
-final String LAST_DOWNLOADED_KEY = resolveCriteriaKey(
+@Field final String LAST_DOWNLOADED_KEY = resolveCriteriaKey(
         'org.sonatype.nexus.repository.search.DefaultComponentMetadataProducer',
         'LAST_DOWNLOADED_KEY',
         'lastDownloaded'
 )
-final String REGEX_KEY = resolveCriteriaKey(
+@Field final String REGEX_KEY = resolveCriteriaKey(
         'org.sonatype.nexus.repository.search.DefaultComponentMetadataProducer',
         'REGEX_KEY',
         'regex'
