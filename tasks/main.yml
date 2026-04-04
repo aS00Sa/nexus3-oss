@@ -166,7 +166,9 @@
       ansible.builtin.include_tasks: call_script.yml
       vars:
         script_name: setup_users_from_list
-        call_args: "{{ nexus_local_users }}"
+        call_args:
+          apply_passwords: "{{ nexus_apply_local_user_passwords | bool }}"
+          users: "{{ nexus_local_users }}"
       when: nexus_local_users | length > 0
 
     - name: Create/check ldap users

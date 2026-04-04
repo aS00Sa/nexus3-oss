@@ -93,10 +93,18 @@ ansible-playbook -i inventory-localdomain.ini install.yml \
 
 **Важно:** на очень больших blobstore встроенный бэкап через копирование из процесса Nexus требует проверки нагрузки и места на диске; для production часто дополняют снапшотами СХД или внешними средствами.
 
+## Пароли (админ и локальные пользователи)
+
+По умолчанию роль **не меняет** пароль `admin` в Nexus и **не перезаписывает** пароли уже существующих локальных пользователей из `nexus_local_users` при каждом запуске (роли, ФИО, email по-прежнему синхронизируются; новые пользователи создаются с паролем из списка).
+
+- **`nexus_apply_admin_password`** (`false` по умолчанию) — включите (`true`) при первом деплое или разовой смене пароля админа, когда Ansible должен вызвать скрипт `update_admin_password`. Желаемый пароль — в **`nexus_admin_password`**. После того как вход по `nexus_admin_password` уже работает, повторные прогоны с `true` пароль снова не сбрасывают.
+- Смена админа, когда текущий пароль другой: в **`nexus_admin_password`** — новый пароль, один запуск с **`-e nexus_default_admin_password=<текущий>`** и **`-e nexus_apply_admin_password=true`** (подробнее — [README.md](README.md), раздел *Change admin password after first install*).
+- **`nexus_apply_local_user_passwords`** (`false` по умолчанию) — поставьте `true` или **`-e nexus_apply_local_user_passwords=true`**, когда нужно принудительно выставить пароли из списка (например ротация **gitlab-ci**).
+
 ## Безопасность
 
-- Пароль администратора задайте в **`group_vars/nexus/01-core.yml`** или через **Ansible Vault**, не коммитьте секреты в открытом виде.
-- Пользователь **gitlab-ci** и пароль **`CHANGE_ME`** в **`group_vars/nexus/13-rbac-gitlab.yml`** смените перед production.
+- Желаемый пароль администратора храните в **`group_vars/nexus/01-core.yml`** (**`nexus_admin_password`**) или в Vault; не коммитьте секреты в открытом виде.
+- Пользователь **gitlab-ci** и пароль **`CHANGE_ME`** в **`group_vars/nexus/13-rbac-gitlab.yml`** смените перед production (при необходимости один прогон с **`nexus_apply_local_user_passwords: true`**).
 
 ## Лицензия и авторы
 

@@ -310,7 +310,22 @@ Controls whether the nexus onboarding wizard runs when the admin user logs in fo
 ```yaml
     nexus_admin_password: 'changeme'
 ```
-The 'admin' account password to setup. _This works only on first time install by default_. Please see [Change admin password after first install](#change-admin-password-after-first-install) if you want to change it later with the role.
+Desired password for the built-in `admin` user (use [ansible-vault](https://docs.ansible.com/ansible/latest/user_guide/vault.html) in real environments).
+
+By default the role **does not** change the admin password. It authenticates with `nexus_admin_password` when that already works, otherwise with the generated `admin.password` file (Nexus ≥ 3.17) or `nexus_default_admin_password`.
+
+```yaml
+    nexus_apply_admin_password: false   # default; set true to apply nexus_admin_password when still on factory/generated credentials
+```
+
+Set `nexus_apply_admin_password: true` for the first run (or a one-off rotation) when you want Ansible to call `update_admin_password`. After the admin password matches `nexus_admin_password`, leaving this `true` does not reset it again on later runs. See [Change admin password after first install](#change-admin-password-after-first-install).
+
+### Local users and passwords
+```yaml
+    nexus_apply_local_user_passwords: false   # default
+```
+
+When `false`, existing users from `nexus_local_users` keep their current Nexus password; roles, name, and email are still updated. New users still receive the password from the list. When `true`, passwords from the list are pushed on every run (previous behaviour). Use `-e nexus_apply_local_user_passwords=true` when you intend to rotate local user passwords.
 
 **It is strongly advised that you do not keep your password in clear text in you playbook and use [ansible-vault encryption](https://docs.ansible.com/ansible/latest/user_guide/vault.html) (either inline or in a separate file loaded with include_vars for example)**
 
@@ -963,13 +978,23 @@ ansible-playbook -i your/inventory.ini your_playbook.yml -e nexus_force_groovy_s
 ```yaml
     nexus_default_admin_password: 'admin123'
 ```
-**This should not be changed in your playbook**. This var is filled with the default nexus admin password on first install and ensures we can change the admin password to `nexus_admin_password`.
+**This should not be changed in your playbook** except via extra vars when rotating. On Nexus ≥ 3.17 the role reads the generated password from `admin.password` when needed; `nexus_default_admin_password` is the fallback for older installs or API checks.
 
-If you want to change your admin password after first install, you can temporarily change this to your old password from the command line. After changing `nexus_admin_password` in your playbook, you can run:
+To **set** the admin password from Ansible (factory/generated → `nexus_admin_password`, or after you supply the current password below), enable:
 
 ```bash
-ansible-playbook -i your/inventory.ini your_playbook.yml -e nexus_default_admin_password=oldPassword
+ansible-playbook -i your/inventory.ini your_playbook.yml -e nexus_apply_admin_password=true
 ```
+
+If you want to change your admin password after first install, pass the **current** admin password and enable apply:
+
+```bash
+ansible-playbook -i your/inventory.ini your_playbook.yml \
+  -e nexus_default_admin_password=oldPassword \
+  -e nexus_apply_admin_password=true
+```
+
+(`nexus_admin_password` in your vars should already be the **new** password.)
 
 #### Upgrade nexus to latest version
 

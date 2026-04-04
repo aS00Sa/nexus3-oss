@@ -85,6 +85,13 @@ nexus_default_admin_password: admin123
 # Nexus admin password to set and use.
 # Note: this should be vault encrypted in your playbook.
 nexus_admin_password: changeme
+# When true: run update_admin_password (factory/random or nexus_default_admin_password → nexus_admin_password).
+# When false (default): never change the admin password from Ansible; API auth still uses file/generated or matching nexus_admin_password.
+# Enable for first-time provisioning or a one-off rotation (see README).
+nexus_apply_admin_password: false
+# When true: reset local users' passwords from nexus_local_users on each run.
+# When false (default): create new users with the given password but do not change passwords for existing users.
+nexus_apply_local_user_passwords: false
 
 nexus_anonymous_access: false
 

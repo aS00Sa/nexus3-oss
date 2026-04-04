@@ -671,8 +671,10 @@
   ansible.builtin.include_tasks: declare_script_each.yml
   with_items: "{{ nexus_groovy_files_changed.stdout_lines }}"
 
-- name: Change admin password if we are still using default
-  when: (nexus_api_head_with_default_password.status | default(false)) == 200
+- name: Change admin password when fallback credentials work and apply is enabled
+  when:
+    - nexus_apply_admin_password | bool
+    - (nexus_api_head_with_default_password.status | default(false)) == 200
   block:
     - name: Update admin password
       ansible.builtin.include_tasks: call_script.yml

@@ -12,7 +12,7 @@ List<Map<String, String>> actionDetails = []
 scriptResults.put('action_details', actionDetails)
 authManager = security.securitySystem.getAuthorizationManager(UserManager.DEFAULT_SOURCE)
 
-def updateUser(userDef, currentResult) {
+def updateUser(userDef, currentResult, boolean doApplyPassword) {
     User user = security.securitySystem.getUser(userDef.username)
 
     user.setFirstName(userDef.first_name)
@@ -37,12 +37,14 @@ def updateUser(userDef, currentResult) {
         scriptResults['changed'] = true
     }
 
-    try {
-        security.securitySystem.changePassword(userDef.username, userDef.password, userDef.password)
-    } catch (InvalidCredentialsException ignored) {
-        security.securitySystem.changePassword(userDef.username, userDef.password)
-        currentResult.put('status', 'updated')
-        scriptResults['changed'] = true
+    if (doApplyPassword) {
+        try {
+            security.securitySystem.changePassword(userDef.username, userDef.password, userDef.password)
+        } catch (InvalidCredentialsException ignored) {
+            security.securitySystem.changePassword(userDef.username, userDef.password)
+            currentResult.put('status', 'updated')
+            scriptResults['changed'] = true
+        }
     }
     log.info("Updated user {}", userDef.username)
 }
@@ -77,9 +79,24 @@ def deleteUser(userDef, currentResult) {
 
 /* Main */
 
-parsed_args = new JsonSlurper().parseText(args)
+def parsed_root = new JsonSlurper().parseText(args)
+boolean applyPasswords = false
+List userList = []
 
-parsed_args.each { userDef ->
+if (parsed_root instanceof Map) {
+    def ap = parsed_root.get('apply_passwords')
+    applyPasswords = (ap instanceof Boolean) ? (Boolean) ap : Boolean.parseBoolean(String.valueOf(ap ?: 'false'))
+    def u = parsed_root.get('users')
+    userList = (u instanceof List) ? (List) u : []
+} else if (parsed_root instanceof List) {
+    // Legacy JSON body: list of users only (previous behaviour — always apply passwords)
+    userList = (List) parsed_root
+    applyPasswords = true
+} else {
+    userList = []
+}
+
+userList.each { userDef ->
 
     state = userDef.get('state', 'present')
 
@@ -90,7 +107,7 @@ parsed_args.each { userDef ->
         deleteUser(userDef, currentResult)
     } else {
         try {
-            updateUser(userDef, currentResult)
+            updateUser(userDef, currentResult, applyPasswords)
         } catch (UserNotFoundException ignored) {
             addUser(userDef, currentResult)
         } catch (Exception e) {
