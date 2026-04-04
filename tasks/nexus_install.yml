@@ -62,41 +62,58 @@
   ansible.builtin.debug:
     msg: "{{ version_info.split('\n') }}"
 
-- name: Register nexus package name
-  ansible.builtin.set_fact:
-    nexus_package: >-
-      {{
-        (nexus_local_package_file | length > 0)
-        | ternary(nexus_local_package_file, 'nexus-' ~ nexus_version ~ '-unix.tar.gz')
-      }}
+- name: Resolve Nexus tarball on controller or fall back to download name
+  block:
+    - name: Build basenames to probe for a local Nexus archive
+      ansible.builtin.set_fact:
+        nexus_local_package_basename_candidates: "{{ ((_explicit | list) + _fallback) | unique }}"
+      vars:
+        _explicit: "{{ [nexus_local_package_file] if nexus_local_package_file | length > 0 else [] }}"
+        _fallback: "{{ ['nexus-' ~ nexus_version ~ '-unix.tar.gz'] }}"
 
-- name: Upload local nexus package from role files
-  ansible.builtin.copy:
-    src: "{{ nexus_local_package_file }}"
-    dest: "{{ nexus_download_dir }}/{{ nexus_package }}"
-    owner: root
-    group: root
-    mode: "0644"
-  when: nexus_local_package_file | length > 0
-  check_mode: false
-  notify:
-    - nexus-service-stop
+    - name: Stat candidate Nexus archive paths on Ansible controller
+      ansible.builtin.stat:
+        path: "{{ item[0] }}/{{ item[1] }}"
+      delegate_to: localhost
+      become: false
+      vars:
+        nexus_local_package_search_dirs: "{{ [nexus_controller_package_dir, playbook_dir, playbook_dir ~ '/files', role_path ~ '/files'] | unique }}"
+      loop: "{{ nexus_local_package_search_dirs | product(nexus_local_package_basename_candidates) | list }}"
+      register: nexus_local_archive_stat
 
-- name: Download nexus_package
+    - name: Register nexus package name and whether to use a local controller archive
+      ansible.builtin.set_fact:
+        nexus_use_local_archive: "{{ _hits | length > 0 }}"
+        nexus_package: "{{ (_hits | first)[1] if (_hits | length > 0) else ('nexus-' ~ nexus_version ~ '-unix.tar.gz') }}"
+        nexus_local_archive_abs: "{{ ((_hits | first)[0] ~ '/' ~ (_hits | first)[1]) if (_hits | length > 0) else '' }}"
+      vars:
+        _hits: "{{ nexus_local_archive_stat.results | selectattr('stat', 'defined') | selectattr('stat.exists') | selectattr('stat.isreg') | map(attribute='item') | list }}"
+
+- name: Download Nexus tarball to Ansible controller (project / nexus_controller_package_dir)
   ansible.builtin.get_url:
     url: "{{ nexus_download_url }}/{{ nexus_package }}"
-    dest: "{{ nexus_download_dir }}/{{ nexus_package }}"
+    dest: "{{ nexus_controller_package_dir }}/{{ nexus_package }}"
     force: false
     validate_certs: "{{ nexus_download_ssl_verify | default(omit) }}"
+    mode: "0644"
+    follow_redirects: all
+  delegate_to: localhost
+  become: false
+  check_mode: false
+  register: nexus_archive_download
+  until: nexus_archive_download.status_code == 200
+  retries: "{{ nexus_download_retries }}"
+  delay: "{{ nexus_download_delay }}"
+  when: not (nexus_use_local_archive | bool)
+
+- name: Copy Nexus package from controller to target host
+  ansible.builtin.copy:
+    src: "{{ nexus_local_archive_abs if (nexus_use_local_archive | bool) else (nexus_controller_package_dir ~ '/' ~ nexus_package) }}"
+    dest: "{{ nexus_download_dir }}/{{ nexus_package }}"
     owner: root
     group: root
     mode: "0644"
   check_mode: false
-  register: download_status
-  until: download_status.status_code == 200
-  retries: "{{ nexus_download_retries }}"
-  delay: "{{ nexus_download_delay }}"
-  when: nexus_local_package_file | length == 0
   notify:
     - nexus-service-stop
 

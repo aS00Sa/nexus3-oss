@@ -4,8 +4,7 @@
   become: true
   vars:
     nexus_version: "3.90.2-06"
-    nexus_pkg_suffix: "linux-x86_64"
-    nexus_local_package_file: "nexus-{{ nexus_version }}-{{ nexus_pkg_suffix }}.tar.gz"
+    nexus_local_package_file: "nexus-{{ nexus_version }}-linux-x86_64.tar.gz"
     nexus_install_dir_name: "nexus-{{ nexus_version }}"
     nexus_admin_password: "nexus1234"   # лучше через ansible-vault
     nexus_public_hostname: "nexus.btnxlocal.ru"
@@ -77,6 +76,12 @@
         search_expression: format == "docker" and path=~"/v2/"
 
     nexus_privileges:
+      - name: all-repos-read
+        description: Read & Browse access to all repos
+        repository: "*"
+        actions:
+          - read
+          - browse
       - name: docker-login-search-all
         type: repository-content-selector
         contentSelector: docker-login
@@ -95,6 +100,13 @@
           - edit
 
     nexus_roles:
+      - id: developers
+        name: developers
+        description: All developers
+        privileges:
+          - nx-search-read
+          - all-repos-read
+        roles: []
       - name: gitlab-ci
         id: gitlab-ci
         description: GitLab CI access to docker-hosted
