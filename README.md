@@ -137,8 +137,11 @@ ansible-playbook -i inventory.ini install.yml -u root \
 | Репозиторий в Nexus | Upstream | Suite (distribution) |
 |---------------------|----------|----------------------|
 | `apt-ubuntu-24.04-noble` | https://archive.ubuntu.com/ubuntu/ | noble (Ubuntu 24.04 LTS) |
+| `apt-ubuntu-24.04-noble-security` | https://security.ubuntu.com/ubuntu/ | noble-security (Ubuntu 24.04) |
 | `apt-debian-12-bookworm` | https://deb.debian.org/debian | bookworm (Debian 12) |
+| `apt-debian-12-bookworm-security` | https://deb.debian.org/debian-security | bookworm-security (Debian 12) |
 | `apt-debian-13-trixie` | https://deb.debian.org/debian | trixie (Debian 13) |
+| `apt-debian-13-trixie-security` | https://deb.debian.org/debian-security | trixie-security (Debian 13) |
 
 ### YUM (`nexus_config_yum: true`)
 

@@ -60,7 +60,7 @@ ansible-playbook -i inventory-localdomain.ini install.yml \
 - **Maven:** `central`, `jboss`, `private-release`, `public`
 - **Docker:** `docker-proxy`, `docker-hosted`, `docker-group`
 - **NPM:** `npm-proxy`, `npm-hosted`, `npm-group`
-- **APT:** `apt-ubuntu-24.04-noble`, `apt-debian-12-bookworm`, `apt-debian-13-trixie`
+- **APT:** `apt-ubuntu-24.04-noble`, `apt-ubuntu-24.04-noble-security`, `apt-debian-12-bookworm`, `apt-debian-12-bookworm-security`, `apt-debian-13-trixie`, `apt-debian-13-trixie-security`
 - **YUM:** `yum-almalinux-9-x86_64-baseos`, `yum-almalinux-9-x86_64-appstream`, `yum-almalinux-10-x86_64-baseos`, `yum-almalinux-10-x86_64-appstream`
 
 Та же сводка продублирована комментарием в начале **`group_vars/nexus/13-users-rbac.yml`**.
@@ -72,8 +72,11 @@ ansible-playbook -i inventory-localdomain.ini install.yml \
 | Репозиторий в Nexus | Upstream | Suite (distribution) |
 |---------------------|----------|------------------------|
 | `apt-ubuntu-24.04-noble` | https://archive.ubuntu.com/ubuntu/ | noble (Ubuntu 24.04 LTS) |
+| `apt-ubuntu-24.04-noble-security` | https://security.ubuntu.com/ubuntu/ | noble-security (Ubuntu 24.04) |
 | `apt-debian-12-bookworm` | https://deb.debian.org/debian | bookworm (Debian 12) |
+| `apt-debian-12-bookworm-security` | https://deb.debian.org/debian-security | bookworm-security (Debian 12) |
 | `apt-debian-13-trixie` | https://deb.debian.org/debian | trixie (Debian 13) |
+| `apt-debian-13-trixie-security` | https://deb.debian.org/debian-security | trixie-security (Debian 13) |
 
 ### YUM (`nexus_config_yum: true`)
 
@@ -95,7 +98,7 @@ ansible-playbook -i inventory-localdomain.ini install.yml \
 - APT: `http(s)://<NEXUS>/repository/<имя_репозитория>/`
 - YUM: `http(s)://<NEXUS>/repository/<имя_репозитория>/` (в конце слэш желателен)
 
-Имена репозиториев в этом проекте: **`apt-debian-13-trixie`**, **`yum-almalinux-10-x86_64-baseos`**, **`yum-almalinux-10-x86_64-appstream`**.
+Имена APT-репозиториев в **`group_vars`** (в т.ч. `*-security`): см. таблицу выше; для клиентов **suite `*-security`** всегда указывайте **отдельный** `URIs` с суффиксом **`-security`** в имени репозитория Nexus. Далее в примере — только Debian 13; для **bookworm** / **noble** замените имена на **`apt-debian-12-bookworm-security`** / **`apt-ubuntu-24.04-noble-security`** и соответствующие **Suites**. YUM: **`yum-almalinux-10-x86_64-baseos`**, **`yum-almalinux-10-x86_64-appstream`**.
 
 ---
 
@@ -112,30 +115,49 @@ Acquire::https::Verify-Host "false";
 
 Первая директива — то, что обычно требуется при самоподписанном или внутреннем сертификате; вторая — если не совпадает имя в сертификате. Если корневой CA Nexus установлен в системе как доверенный, этот файл можно **не** создавать (предпочтительнее для production).
 
-3. Создайте, например, **`/etc/apt/sources.list.d/nexus-trixie.sources`** (формат deb822, как в современных Debian), **HTTPS**:
+3. Создайте **`/etc/apt/sources.list.d/nexus-trixie.sources`** (deb822). Важно: **`trixie`** и **`trixie-security`** — это **разные** upstream-зеркала; в Nexus у них **разные** имена репозиториев, на клиенте — **два** блока **`Types: deb`** (или две строки **`deb`**).
+
+**HTTPS** (подставьте хост Nexus, ниже для примера — прямой IP):
 
 ```ini
 Types: deb
-URIs: https://nexus.btnxlocal.ru/repository/apt-debian-13-trixie
+URIs: https://192.168.1.70:8081/repository/apt-debian-13-trixie
 Suites: trixie
+Components: main
+Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+
+Types: deb
+URIs: https://192.168.1.70:8081/repository/apt-debian-13-trixie-security
+Suites: trixie-security
 Components: main
 Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
 ```
 
-Для **HTTP на порт 8081** без TLS (только в доверенной сети) — шаг 2 с **`Acquire::https::...`** не нужен:
+**HTTP :8081** (без TLS — шаг 2 с **`Acquire::https::...`** не нужен):
 
 ```ini
 Types: deb
-URIs: http://nexus.btnxlocal.ru:8081/repository/apt-debian-13-trixie
+URIs: http://192.168.1.70:8081/repository/apt-debian-13-trixie
 Suites: trixie
+Components: main
+Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+
+Types: deb
+URIs: http://192.168.1.70:8081/repository/apt-debian-13-trixie-security
+Suites: trixie-security
 Components: main
 Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
 ```
 
-Классическая одна строка в **`sources.list`** (HTTPS + тот же **`80nexus-https.conf`**):
+Ошибка **`... trixie-security InRelease' is not signed`** чаще всего из‑за строки вида **`deb .../apt-debian-13-trixie trixie-security main`**: репозиторий **`apt-debian-13-trixie`** в Nexus привязан только к **`distribution: trixie`**, не к security. Тогда Nexus отдаёт не тот индекс — APT считает репозиторий неподписанным. После **`ansible-playbook install.yml`** в Nexus создаются пары основной + security: **`apt-debian-13-trixie-security`**, **`apt-debian-12-bookworm-security`**, **`apt-ubuntu-24.04-noble-security`**. Для suite **`*-security`** в **`URIs`** указывайте именно их, а не репозиторий с «обычным» distribution.
+
+Сообщение **`Unauthorized` / `401`** при **`apt update`**: для чтения репозиториев без логина в Nexus включите анонимный доступ (**`nexus_anonymous_access: true`** в vars и повторный прогон роли) либо настройте аутентификацию APT к Nexus (см. документацию Sonatype).
+
+Классические строки **`sources.list`** (эквивалент двум блокам выше, HTTP):
 
 ```text
-deb [signed-by=/usr/share/keyrings/debian-archive-keyring.gpg] https://nexus.btnxlocal.ru/repository/apt-debian-13-trixie trixie main
+deb [signed-by=/usr/share/keyrings/debian-archive-keyring.gpg] http://192.168.1.70:8081/repository/apt-debian-13-trixie trixie main
+deb [signed-by=/usr/share/keyrings/debian-archive-keyring.gpg] http://192.168.1.70:8081/repository/apt-debian-13-trixie-security trixie-security main
 ```
 
 4. Обновление индекса и системы:
@@ -145,7 +167,7 @@ sudo apt update
 sudo apt full-upgrade
 ```
 
-При необходимости добавьте компоненты (**`contrib`**, **`non-free-firmware`**) и отдельные suites (**`trixie-updates`**, **`trixie-security`**) — но тогда в Nexus нужны **отдельные** APT proxy-репозитории с теми же `distribution`, как в официальной документации Debian, и отдельные блоки `URIs`/`Suites` на клиенте.
+Для **`trixie-updates`** добавьте ещё один APT proxy в Nexus (**`distribution: trixie-updates`**, **`remote_url`**: тот же **`https://deb.debian.org/debian`**) и ещё один блок в **`*.sources`**. **`trixie-security`** уже покрыт репозиторием **`apt-debian-13-trixie-security`** в **`group_vars/nexus/06-apt-debian-13-trixie-repos.yml`**.
 
 ---
 

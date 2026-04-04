@@ -1,7 +1,11 @@
 ---
-# Ubuntu 24.04 LTS (noble): один прокси на suite. Добавьте noble-updates, noble-security и т.д.
+# Ubuntu 24.04 LTS (noble): отдельный прокси на каждый suite (noble-security — security.ubuntu.com).
 nexus_apt_proxy_ubuntu:
   - name: apt-ubuntu-24.04-noble
     remote_url: https://archive.ubuntu.com/ubuntu/
     distribution: noble
+    flat: false
+  - name: apt-ubuntu-24.04-noble-security
+    remote_url: https://security.ubuntu.com/ubuntu/
+    distribution: noble-security
     flat: false
