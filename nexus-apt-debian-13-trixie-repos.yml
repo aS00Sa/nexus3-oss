@@ -1,0 +1,7 @@
+---
+# Debian 13 (trixie): один прокси на suite. Добавьте trixie-updates, trixie-security и т.д.
+nexus_apt_proxy_debian_13:
+  - name: apt-debian-13-trixie
+    remote_url: https://deb.debian.org/debian
+    distribution: trixie
+    flat: false

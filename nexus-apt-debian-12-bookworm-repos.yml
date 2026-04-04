@@ -1,0 +1,7 @@
+---
+# Debian 12 (bookworm): один прокси на suite. Добавьте bookworm-updates, bookworm-security и т.д.
+nexus_apt_proxy_debian_12:
+  - name: apt-debian-12-bookworm
+    remote_url: https://deb.debian.org/debian
+    distribution: bookworm
+    flat: false

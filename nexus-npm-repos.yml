@@ -1,0 +1,13 @@
+---
+nexus_config_npm: true
+nexus_repos_npm_proxy:
+  - name: npm-proxy
+    remote_url: https://registry.npmjs.org
+nexus_repos_npm_hosted:
+  - name: npm-hosted
+    write_policy: allow
+nexus_repos_npm_group:
+  - name: npm-group
+    member_repos:
+      - npm-hosted
+      - npm-proxy

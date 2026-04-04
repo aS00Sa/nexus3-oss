@@ -1,0 +1,4 @@
+---
+# Собирает списки из nexus-yum-almalinux-* (vars_files с версиями должны идти раньше).
+nexus_config_yum: true
+nexus_repos_yum_proxy: "{{ nexus_yum_proxy_almalinux_9 | default([]) + nexus_yum_proxy_almalinux_10 | default([]) }}"

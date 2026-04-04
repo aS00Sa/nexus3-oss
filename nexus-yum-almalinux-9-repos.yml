@@ -1,0 +1,7 @@
+---
+# AlmaLinux 9, x86_64 (BaseOS + AppStream).
+nexus_yum_proxy_almalinux_9:
+  - name: yum-almalinux-9-x86_64-baseos
+    remote_url: https://repo.almalinux.org/almalinux/9/BaseOS/x86_64/os/
+  - name: yum-almalinux-9-x86_64-appstream
+    remote_url: https://repo.almalinux.org/almalinux/9/AppStream/x86_64/os/

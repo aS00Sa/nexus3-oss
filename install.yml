@@ -2,130 +2,17 @@
 - name: Deploy Nexus OSS
   hosts: nexus
   become: true
-  vars:
-    nexus_version: "3.90.2-06"
-    nexus_local_package_file: "nexus-{{ nexus_version }}-linux-x86_64.tar.gz"
-    nexus_install_dir_name: "nexus-{{ nexus_version }}"
-    nexus_admin_password: "nexus1234"   # лучше через ansible-vault
-    nexus_public_hostname: "nexus.btnxlocal.ru"
-    nexus_timezone: "UTC+3"
-    nexus_ldap_realm: false
-    nexus_docker_bearer_token_realm: true
-    nexus_npm_bearer_token_realm: false
-    nexus_config_docker: true
-    nexus_repos_docker_proxy:
-      - name: docker-proxy
-        http_port: "{{ nexus_docker_proxy_port }}"
-        remote_url: https://registry-1.docker.io
-        index_type: HUB
-    nexus_repos_docker_hosted:
-      - name: docker-hosted
-        http_port: "{{ nexus_docker_hosted_port }}"
-        cleanup_policies:
-          - docker_dev_aggressive_cleanup
-    nexus_repos_docker_group:
-      - name: docker-group
-        http_port: "{{ nexus_docker_group_port }}"
-        member_repos:
-          - docker-hosted
-          - docker-proxy
-
-    nexus_config_npm: true
-    nexus_repos_npm_proxy:
-      - name: npm-proxy
-        remote_url: https://registry.npmjs.org
-    nexus_repos_npm_hosted:
-      - name: npm-hosted
-        write_policy: allow
-    nexus_repos_npm_group:
-      - name: npm-group
-        member_repos:
-          - npm-hosted
-          - npm-proxy
-
-    # Aggressive cleanup only for docker-hosted dev tags.
-    nexus_repos_cleanup_policies:
-      - name: docker_dev_aggressive_cleanup
-        format: docker
-        mode:
-        notes: Cleanup for docker-hosted images with -dev tag suffix
-        criteria:
-          lastBlobUpdated: 14
-          lastDownloaded: 14
-          regexKey: ".*-dev$"
-
-    nexus_tasks:
-      - name: Docker - Delete unused manifests and images (docker-hosted nightly)
-        cron: "0 30 2 * * ?"
-        typeId: "repository.docker.gc"
-        taskProperties:
-          repositoryName: "docker-hosted"
-
-    # GitLab CI user for Docker registry access (bearer token realm).
-    # This user will be created as a local Nexus account.
-    gitlab_ci_nexus_username: "gitlab-ci"
-    gitlab_ci_nexus_password: "CHANGE_ME"
-
-    # Docker security model: enable login/search + allow push/pull to docker-hosted.
-    nexus_content_selectors:
-      - name: docker-login
-        description: Selector for docker login privilege
-        search_expression: format == "docker" and path=~"/v2/"
-      - name: docker-hosted-all
-        description: All docker paths within docker-hosted
-        search_expression: format == "docker" and path=~"/v2/"
-
-    nexus_privileges:
-      - name: all-repos-read
-        description: Read & Browse access to all repos
-        repository: "*"
-        actions:
-          - read
-          - browse
-      - name: docker-login-search-all
-        type: repository-content-selector
-        contentSelector: docker-login
-        repository: "*"
-        actions:
-          - read
-          - browse
-      - name: docker-hosted-rw
-        type: repository-content-selector
-        contentSelector: docker-hosted-all
-        repository: docker-hosted
-        actions:
-          - read
-          - browse
-          - add
-          - edit
-
-    nexus_roles:
-      - id: developers
-        name: developers
-        description: All developers
-        privileges:
-          - nx-search-read
-          - all-repos-read
-        roles: []
-      - name: gitlab-ci
-        id: gitlab-ci
-        description: GitLab CI access to docker-hosted
-        privileges:
-          - docker-login-search-all
-          - docker-hosted-rw
-        roles:
-          - developers
-          - nx-admin
-
-    nexus_local_users:
-      - username: "{{ gitlab_ci_nexus_username }}"
-        first_name: GitLab
-        last_name: CI
-        email: gitlab-ci@example.local
-        password: "{{ gitlab_ci_nexus_password }}"
-        roles:
-          - developers
-          - gitlab-ci
-          - nx-admin
+  vars_files:
+    - nexus-core.yml
+    - nexus-docker-repos.yml
+    - nexus-npm-repos.yml
+    - nexus-apt-ubuntu-24.04-noble-repos.yml
+    - nexus-apt-debian-12-bookworm-repos.yml
+    - nexus-apt-debian-13-trixie-repos.yml
+    - nexus-apt-repos.yml
+    - nexus-yum-almalinux-9-repos.yml
+    - nexus-yum-almalinux-10-repos.yml
+    - nexus-yum-repos.yml
+    - nexus-rbac-gitlab.yml
   roles:
     - role: ansible-role-nexus3-oss

@@ -128,6 +128,27 @@ ansible-playbook -i inventory.ini install.yml -u root \
 --private-key ~/.ssh/id_ed25519 -vvv 2>&1 | tee nexus-$(date +%Y%m%d-%H%M).log
    ```
 
+2. **Репозитории Linux в примере `install.yml`** — переменные вынесены в файлы `nexus-apt-*.yml`, `nexus-yum-*.yml` и агрегаторы `nexus-apt-repos.yml`, `nexus-yum-repos.yml` в корне репозитория. Итоговые имена репозиториев в Nexus и upstream:
+
+### APT (`nexus_config_apt: true`)
+
+| Репозиторий в Nexus | Upstream | Suite (distribution) |
+|---------------------|----------|----------------------|
+| `apt-ubuntu-24.04-noble` | https://archive.ubuntu.com/ubuntu/ | noble (Ubuntu 24.04 LTS) |
+| `apt-debian-12-bookworm` | https://deb.debian.org/debian | bookworm (Debian 12) |
+| `apt-debian-13-trixie` | https://deb.debian.org/debian | trixie (Debian 13) |
+
+### YUM (`nexus_config_yum: true`)
+
+| Репозиторий в Nexus | Upstream |
+|---------------------|----------|
+| `yum-almalinux-9-x86_64-baseos` | https://repo.almalinux.org/almalinux/9/BaseOS/x86_64/os/ (AlmaLinux 9 BaseOS x86_64) |
+| `yum-almalinux-9-x86_64-appstream` | https://repo.almalinux.org/almalinux/9/AppStream/x86_64/os/ (AlmaLinux 9 AppStream x86_64) |
+| `yum-almalinux-10-x86_64-baseos` | https://repo.almalinux.org/almalinux/10/BaseOS/x86_64/os/ (AlmaLinux 10 BaseOS x86_64) |
+| `yum-almalinux-10-x86_64-appstream` | https://repo.almalinux.org/almalinux/10/AppStream/x86_64/os/ (AlmaLinux 10 AppStream x86_64) |
+
+Blobstore’ы **blob-apt** и **blob-yum** уже описаны в `vars/blob_vars.yml`, в плейбуке отдельно не задавались.
+
 ## Role Variables
 
 Ansible variables, along with the default values (see `default/main.yml`) :
@@ -1243,6 +1264,3 @@ GNU GPLv3
 ## Author Information
 
 See: https://github.com/ansible-role
-
-
-[Lionel Lecha]: https://www.linkedin.com/in/lionellecha/

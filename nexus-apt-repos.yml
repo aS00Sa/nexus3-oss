@@ -1,0 +1,4 @@
+---
+# Собирает списки из nexus-apt-ubuntu-* и nexus-apt-debian-* (vars_files должны идти раньше).
+nexus_config_apt: true
+nexus_repos_apt_proxy: "{{ nexus_apt_proxy_ubuntu | default([]) + nexus_apt_proxy_debian_12 | default([]) + nexus_apt_proxy_debian_13 | default([]) }}"
