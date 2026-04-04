@@ -151,7 +151,58 @@ Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
 
 Ошибка **`... trixie-security InRelease' is not signed`** чаще всего из‑за строки вида **`deb .../apt-debian-13-trixie trixie-security main`**: репозиторий **`apt-debian-13-trixie`** в Nexus привязан только к **`distribution: trixie`**, не к security. Тогда Nexus отдаёт не тот индекс — APT считает репозиторий неподписанным. После **`ansible-playbook install.yml`** в Nexus создаются пары основной + security: **`apt-debian-13-trixie-security`**, **`apt-debian-12-bookworm-security`**, **`apt-ubuntu-24.04-noble-security`**. Для suite **`*-security`** в **`URIs`** указывайте именно их, а не репозиторий с «обычным» distribution.
 
-Сообщение **`Unauthorized` / `401`** при **`apt update`**: для чтения репозиториев без логина в Nexus включите анонимный доступ (**`nexus_anonymous_access: true`** в vars и повторный прогон роли) либо настройте аутентификацию APT к Nexus (см. документацию Sonatype).
+Сообщение **`Unauthorized` / `401`** при **`apt update`**: либо включите анонимный доступ (**`nexus_anonymous_access: true`** в vars и прогон роли), либо задайте логин/пароль (ниже).
+
+##### Debian 13: авторизация под пользователем Nexus (Basic Auth)
+
+Учётка с **`repo-readers`** (например **`repo-dev`** из **`group_vars/nexus/13-users-rbac.yml`**). Два равноправных способа — **логин в URL** или **файл `auth.conf.d`** (не смешивайте оба на один и тот же хост без необходимости).
+
+**А) Логин и пароль в `http(s)://` (userinfo)** — проще для копирования, но пароль **виден** в **`sources`**, бэкапах и иногда в логах; спецсимволы в логине/пароле [**кодируйте в URL**](https://datatracker.ietf.org/doc/html/rfc3986) (например **`@`** → **`%40`**, **`:`** → **`%3A`**).
+
+Пример **`*.sources`** (HTTP):
+
+```ini
+Types: deb
+URIs: http://repo-dev:ВАШ_ПАРОЛЬ@192.168.1.70:8081/repository/apt-debian-13-trixie
+Suites: trixie
+Components: main
+Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+
+Types: deb
+URIs: http://repo-dev:ВАШ_ПАРОЛЬ@192.168.1.70:8081/repository/apt-debian-13-trixie-security
+Suites: trixie-security
+Components: main
+Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+```
+
+Строка **`sources.list`**:
+
+```text
+deb [signed-by=/usr/share/keyrings/debian-archive-keyring.gpg] http://repo-dev:ВАШ_ПАРОЛЬ@192.168.1.70:8081/repository/apt-debian-13-trixie trixie main
+deb [signed-by=/usr/share/keyrings/debian-archive-keyring.gpg] http://repo-dev:ВАШ_ПАРОЛЬ@192.168.1.70:8081/repository/apt-debian-13-trixie-security trixie-security main
+```
+
+Поставьте **`chmod 600`** на файл с источниками, если храните пароль в URL.
+
+**Б) Отдельный файл** **`/etc/apt/auth.conf.d/90nexus.conf`** (пароль не в **`URIs`**):
+
+```text
+machine 192.168.1.70
+login repo-dev
+password ВАШ_ПАРОЛЬ_ИЗ_ANSIBLE
+```
+
+Права только для root: **`sudo chmod 600 /etc/apt/auth.conf.d/90nexus.conf`**.
+
+Если **`apt update`** всё ещё отвечает **401**, для вашей версии APT может потребоваться **порт** в поле **`machine`** (как в URL):
+
+```text
+machine 192.168.1.70:8081
+login repo-dev
+password ВАШ_ПАРОЛЬ_ИЗ_ANSIBLE
+```
+
+Для **нескольких хостов** (IP и имя из сертификата) можно продублировать блок **`machine ... login ... password ...`**.
 
 Классические строки **`sources.list`** (эквивалент двум блокам выше, HTTP):
 
@@ -224,6 +275,38 @@ gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-AlmaLinux-10
 ```
 
 Если RPM-GPG-KEY с другим именем на хосте — поправьте путь (**`rpm -qa gpg-pubkey*`** / каталог **`/etc/pki/rpm-gpg/`**). Для отладки без проверки подписи пакетов (нежелательно в бою) временно **`gpgcheck=0`**.
+
+##### AlmaLinux 10: авторизация под пользователем Nexus (Basic Auth)
+
+Учётка **`repo-readers`** (например **`repo-dev`**).
+
+**Б) Поля `username=` и `password=` в секции** (пароль не в URL `baseurl`):
+
+```ini
+[nexus-al10-baseos]
+name=AlmaLinux 10 BaseOS via Nexus (auth)
+baseurl=http://192.168.1.70:8081/repository/yum-almalinux-10-x86_64-baseos/
+username=repo-dev
+password=ВАШ_ПАРОЛЬ_ИЗ_ANSIBLE
+enabled=1
+gpgcheck=1
+countme=1
+metadata_expire=86400
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-AlmaLinux-10
+
+[nexus-al10-appstream]
+name=AlmaLinux 10 AppStream via Nexus (auth)
+baseurl=http://192.168.1.70:8081/repository/yum-almalinux-10-x86_64-appstream/
+username=repo-dev
+password=ВАШ_ПАРОЛЬ_ИЗ_ANSIBLE
+enabled=1
+gpgcheck=1
+countme=1
+metadata_expire=86400
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-AlmaLinux-10
+```
+
+**`chmod 600`** на **`/etc/yum.repos.d/nexus-alma10.repo`**. Для production удобнее шаблоны Ansible + **Vault**.
 
 4. Обновление:
 

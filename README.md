@@ -154,7 +154,7 @@ ansible-playbook -i inventory.ini install.yml -u root \
 
 Blobstore’ы **blob-apt** и **blob-yum** уже описаны в `vars/blob_vars.yml`, в плейбуке отдельно не задавались.
 
-**Client OS updates via Nexus (Debian 13 trixie, AlmaLinux 10):** примеры `sources` / `.repo`, по умолчанию для HTTPS — **`/etc/apt/apt.conf.d/80nexus-https.conf`** с `Acquire::https::Verify-Peer "false"` (и `Verify-Host`) для APT и **`sslverify=0`** в `.repo` для DNF — в [**README.ru.md**](README.ru.md), раздел *«Клиенты: обновление ОС через Nexus»*.
+**Client OS updates via Nexus (Debian 13 trixie, AlmaLinux 10):** примеры `sources` / `.repo`, HTTPS hardening, **Basic Auth** — в т.ч. **`http://user:password@host/...`** в **`URIs`** / **`baseurl`**, либо **`auth.conf.d`**, либо **`username=`** / **`password=`** в `.repo` — в [**README.ru.md**](README.ru.md), раздел *«Клиенты: обновление ОС через Nexus»*.
 
 Кратко на русском: деплой, расписание (compact, Docker GC), еженедельный бэкап — в **[README.ru.md](README.ru.md)**.
 
