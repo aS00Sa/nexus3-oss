@@ -86,6 +86,137 @@ ansible-playbook -i inventory-localdomain.ini install.yml \
 
 Каталоги **blob-apt** и **blob-yum** заданы в **`vars/blob_vars.yml`**.
 
+### Клиенты: обновление ОС через Nexus (Debian 13 и AlmaLinux 10)
+
+Подставьте свой хост и схему доступа к Nexus (в примере ниже — из **`nexus_public_hostname`** и типичный прямой порт **8081**). Если перед Nexus стоит reverse proxy на **443**, используйте `https://<хост>/repository/...` **без** `:8081`.
+
+**Базовый шаблон URL в Nexus 3:**
+
+- APT: `http(s)://<NEXUS>/repository/<имя_репозитория>/`
+- YUM: `http(s)://<NEXUS>/repository/<имя_репозитория>/` (в конце слэш желателен)
+
+Имена репозиториев в этом проекте: **`apt-debian-13-trixie`**, **`yum-almalinux-10-x86_64-baseos`**, **`yum-almalinux-10-x86_64-appstream`**.
+
+---
+
+#### Debian 13 (trixie), APT
+
+1. Отключите или закомментируйте официальные зеркала в **`/etc/apt/sources.list`** и **`/etc/apt/sources.list.d/*.sources`** / **`*.list`**, чтобы не смешивать поток с Nexus.
+
+2. **По умолчанию для HTTPS к Nexus** (частый случай — свой TLS без корпоративного CA на клиенте): создайте **`/etc/apt/apt.conf.d/80nexus-https.conf`**:
+
+```text
+Acquire::https::Verify-Peer "false";
+Acquire::https::Verify-Host "false";
+```
+
+Первая директива — то, что обычно требуется при самоподписанном или внутреннем сертификате; вторая — если не совпадает имя в сертификате. Если корневой CA Nexus установлен в системе как доверенный, этот файл можно **не** создавать (предпочтительнее для production).
+
+3. Создайте, например, **`/etc/apt/sources.list.d/nexus-trixie.sources`** (формат deb822, как в современных Debian), **HTTPS**:
+
+```ini
+Types: deb
+URIs: https://nexus.btnxlocal.ru/repository/apt-debian-13-trixie
+Suites: trixie
+Components: main
+Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+```
+
+Для **HTTP на порт 8081** без TLS (только в доверенной сети) — шаг 2 с **`Acquire::https::...`** не нужен:
+
+```ini
+Types: deb
+URIs: http://nexus.btnxlocal.ru:8081/repository/apt-debian-13-trixie
+Suites: trixie
+Components: main
+Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+```
+
+Классическая одна строка в **`sources.list`** (HTTPS + тот же **`80nexus-https.conf`**):
+
+```text
+deb [signed-by=/usr/share/keyrings/debian-archive-keyring.gpg] https://nexus.btnxlocal.ru/repository/apt-debian-13-trixie trixie main
+```
+
+4. Обновление индекса и системы:
+
+```bash
+sudo apt update
+sudo apt full-upgrade
+```
+
+При необходимости добавьте компоненты (**`contrib`**, **`non-free-firmware`**) и отдельные suites (**`trixie-updates`**, **`trixie-security`**) — но тогда в Nexus нужны **отдельные** APT proxy-репозитории с теми же `distribution`, как в официальной документации Debian, и отдельные блоки `URIs`/`Suites` на клиенте.
+
+---
+
+#### AlmaLinux 10, DNF / YUM
+
+1. Сохраните копии репозиториев: **`/etc/yum.repos.d/`**.
+2. Отключите штатные репозитории Alma (переименуйте или **`enabled=0`** в **`almalinux-*.repo`**), чтобы весь трафик шёл через Nexus.
+3. Создайте **`/etc/yum.repos.d/nexus-alma10.repo`**.
+
+Вариант **HTTP :8081** (проверка TLS к Nexus не используется):
+
+```ini
+[nexus-al10-baseos]
+name=AlmaLinux 10 BaseOS via Nexus
+baseurl=http://nexus.btnxlocal.ru:8081/repository/yum-almalinux-10-x86_64-baseos/
+enabled=1
+gpgcheck=1
+countme=1
+metadata_expire=86400
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-AlmaLinux-10
+
+[nexus-al10-appstream]
+name=AlmaLinux 10 AppStream via Nexus
+baseurl=http://nexus.btnxlocal.ru:8081/repository/yum-almalinux-10-x86_64-appstream/
+enabled=1
+gpgcheck=1
+countme=1
+metadata_expire=86400
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-AlmaLinux-10
+```
+
+Вариант **HTTPS** к Nexus — **по умолчанию отключите проверку TLS** (аналог apt), если нет доверенного CA на клиенте: в **каждой** секции добавьте **`sslverify=0`**:
+
+```ini
+[nexus-al10-baseos]
+name=AlmaLinux 10 BaseOS via Nexus (HTTPS)
+baseurl=https://nexus.btnxlocal.ru/repository/yum-almalinux-10-x86_64-baseos/
+enabled=1
+sslverify=0
+gpgcheck=1
+countme=1
+metadata_expire=86400
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-AlmaLinux-10
+
+[nexus-al10-appstream]
+name=AlmaLinux 10 AppStream via Nexus (HTTPS)
+baseurl=https://nexus.btnxlocal.ru/repository/yum-almalinux-10-x86_64-appstream/
+enabled=1
+sslverify=0
+gpgcheck=1
+countme=1
+metadata_expire=86400
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-AlmaLinux-10
+```
+
+Если RPM-GPG-KEY с другим именем на хосте — поправьте путь (**`rpm -qa gpg-pubkey*`** / каталог **`/etc/pki/rpm-gpg/`**). Для отладки без проверки подписи пакетов (нежелательно в бою) временно **`gpgcheck=0`**.
+
+4. Обновление:
+
+```bash
+sudo dnf clean all
+sudo dnf makecache
+sudo dnf upgrade --refresh
+```
+
+**Замечание:** в **`group_vars`** сейчас только **BaseOS** и **AppStream**. Для **CRB**, **extras** и т.п. добавьте соответствующие **yum proxy** в Nexus и ещё один блок **`[nexus-...]`** с тем же шаблоном `baseurl`.
+
+---
+
+Кратко на английском и в таблице имён репозиториев см. также [**README.md**](README.md) (раздел про репозитории Linux).
+
 ### Docker hosted: очистка тегов `dev` / `test` / `main`
 
 В **`group_vars/nexus/02-docker-repos.yml`** к репозиторию **`docker-hosted`** подключены три политики (имена в Nexus):
