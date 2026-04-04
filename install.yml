@@ -22,6 +22,8 @@
     nexus_repos_docker_hosted:
       - name: docker-hosted
         http_port: "{{ nexus_docker_hosted_port }}"
+        cleanup_policies:
+          - docker_dev_aggressive_cleanup
     nexus_repos_docker_group:
       - name: docker-group
         http_port: "{{ nexus_docker_group_port }}"
@@ -41,6 +43,24 @@
         member_repos:
           - npm-hosted
           - npm-proxy
+
+    # Aggressive cleanup only for docker-hosted dev tags.
+    nexus_repos_cleanup_policies:
+      - name: docker_dev_aggressive_cleanup
+        format: docker
+        mode:
+        notes: Cleanup for docker-hosted images with -dev tag suffix
+        criteria:
+          lastBlobUpdated: 14
+          lastDownloaded: 14
+          regexKey: ".*-dev$"
+
+    nexus_tasks:
+      - name: Docker - Delete unused manifests and images (docker-hosted nightly)
+        cron: "0 30 2 * * ?"
+        typeId: "repository.docker.gc"
+        taskProperties:
+          repositoryName: "docker-hosted"
 
     # GitLab CI user for Docker registry access (bearer token realm).
     # This user will be created as a local Nexus account.
@@ -81,6 +101,9 @@
         privileges:
           - docker-login-search-all
           - docker-hosted-rw
+        roles:
+          - developers
+          - nx-admin
 
     nexus_local_users:
       - username: "{{ gitlab_ci_nexus_username }}"
@@ -89,6 +112,8 @@
         email: gitlab-ci@example.local
         password: "{{ gitlab_ci_nexus_password }}"
         roles:
+          - developers
           - gitlab-ci
+          - nx-admin
   roles:
     - role: ansible-role-nexus3-oss
