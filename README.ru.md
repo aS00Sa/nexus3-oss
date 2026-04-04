@@ -284,3 +284,88 @@ sudo dnf upgrade --refresh
 ## Лицензия и авторы
 
 См. [README.md](README.md) (GNU GPLv3, ссылки на авторов и форк).
+
+
+
+В репозитории роли cloud-init нет — ниже схема именно для Proxmox + debian-13-genericcloud-amd64.qcow2 и ваших APT + auth (как в README).
+
+1. Образ и ВМ
+Скачайте образ (например с cloud.debian.org).
+В Proxmox: Upload в хранилище (или wget на узел и qm importdisk).
+Создайте ВМ без установочного ISO: подключите импортированный диск как SCSI/VirtIO (обычно scsi0 на контроллере VirtIO SCSI).
+Включите QEMU Guest Agent в опциях ВМ (удобно для IP/трим); в образе агент обычно уже есть.
+На вкладке Cloud-Init задайте минимум: User, SSH public key, при необходимости IP (или оставьте DHCP).
+2. Диск / сниппет cloud-init в Proxmox
+Нужно хранилище с типом контента Snippets (часто local → в веб-интерфейсе отметить Snippets).
+
+Создайте файл, например
+/var/lib/vz/snippets/debian13-nexus-cloud.yaml
+(путь зависит от того, как у вас смонтировано local — смотрите Datacenter → Storage).
+
+В конфиг ВМ (или через GUI: Cloud-Init → Regenerate image после правок) укажите custom user-data:
+
+cicustom: user=local:snippets/debian13-nexus-cloud.yaml
+Имя local и имя файла должны совпадать с вашим storage и путём в сниппетах.
+
+3. Пример user-data (APT через Nexus + Basic Auth)
+Первой строкой обязательно #cloud-config. Пароль лучше потом заменить на свой / вынести из шаблона.
+
+#cloud-config
+write_files:
+  - path: /etc/apt/sources.list.d/debian.sources
+    permissions: '0644'
+    content: |
+      Types: deb
+      URIs: http://192.168.1.70:8081/repository/apt-debian-13-trixie
+      Suites: trixie
+      Components: main
+      Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+      Types: deb
+      URIs: http://192.168.1.70:8081/repository/apt-debian-13-trixie-updates
+      Suites: trixie-updates
+      Components: main
+      Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+      Types: deb
+      URIs: http://192.168.1.70:8081/repository/apt-debian-13-trixie-backports
+      Suites: trixie-backports
+      Components: main
+      Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+      Types: deb
+      URIs: http://192.168.1.70:8081/repository/apt-debian-13-trixie-security
+      Suites: trixie-security
+      Components: main
+      Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+  - path: /etc/apt/auth.conf.d/90nexus.conf
+    permissions: '0600'
+    content: |
+      machine http://192.168.1.70:8081
+      login repo-dev
+      password CHANGE_ME
+runcmd:
+  - [ rm, -f, /etc/apt/sources.list.d/debian.sources.disabled ]
+  - [ apt-get, update, -qq ]
+package_update: true
+package_upgrade: false
+При необходимости отключите дефолтные источники из образа (в trixie они часто в одном debian.sources):
+
+runcmd:
+  - sed -i 's/^URIs:/# URIs:/' /etc/apt/sources.list.d/debian.sources
+  - sed -i 's/^Types:/# Types:/' /etc/apt/sources.list.d/debian.sources
+Лучше не «ломать» слепо весь файл, а заменить его целиком через тот же write_files с path: /etc/apt/sources.list.d/debian.sources — тогда ваш блок полностью перекроет содержимое (как у вас в доке).
+
+4. Сеть (статика)
+Если не задаёте IP в GUI, можно вторым сниппетом:
+
+cicustom: user=local:snippets/debian13-nexus-cloud.yaml,network=local:snippets/debian13-network.yaml
+debian13-network.yaml — в формате network v2 (version: 2), см. Proxmox wiki Cloud-Init.
+
+5. Шаблон
+После успешной первой загрузки сделайте шаблон (Convert to template). Новые ВМ из шаблона получат новый seed cloud-init; если что-то «не применилось», проверьте, что у клона другой vmgenid / пересоздание cloud-init диска (в Proxmox при клонировании обычно «Regenerate»).
+
+6. Отладка
+На госте после загрузки:
+
+sudo cloud-init status --long
+sudo cat /var/log/cloud-init-output.log
+Итог: всё сводится к cicustom + YAML с write_files и при необходимости runcmd/package_*; Proxmox только подставляет этот файл как user-data на виртуальный CD/диск cloud-init.
+
