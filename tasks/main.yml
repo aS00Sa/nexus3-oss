@@ -52,7 +52,9 @@
       proxy_exclude_hosts: "{{ nexus_proxy_exclude_hosts }}"
       nexus_http_proxy_timeout: "{{ nexus_http_proxy_timeout }}"
       nexus_http_proxy_retries: "{{ nexus_http_proxy_retries }}"
-  when: nexus_with_http_proxy or nexus_with_https_proxy
+  when:
+    - nexus_with_http_proxy or nexus_with_https_proxy
+    - not (nexus_sync_repositories_only | default(false) | bool)
 
 - name: Deleting default repositories
   ansible.builtin.include_tasks: delete_repo_each.yml
@@ -79,7 +81,9 @@
   when: (nexus_data_dir_contents.matched == 0) and nexus_delete_default_blobstore
 
 - name: Provisioning (ldap, content selectors, blobstores, prepare privileges)
-  when: nexus_run_provisionning | default(true) | bool
+  when:
+    - nexus_run_provisionning | default(true) | bool
+    - not (nexus_sync_repositories_only | default(false) | bool)
   block:
     - name: Create/check ldap servers
       ansible.builtin.include_tasks: setup_ldap_each.yml
@@ -137,7 +141,9 @@
       vars:
         script_name: create_cleanup_policies_from_list
         call_args: "{{ nexus_repos_cleanup_policies }}"
-      when: nexus_repos_cleanup_policies | length > 0
+      when:
+        - nexus_repos_cleanup_policies | length > 0
+        - not (nexus_sync_repositories_only | default(false) | bool)
 
     - name: Apply defaults to repositories configurations and process a single list
       ansible.builtin.include_tasks: process_repos_list.yml
@@ -153,14 +159,18 @@
       vars:
         script_name: setup_privileges_from_list
         call_args: "{{ nexus_privileges }}"
-      when: nexus_privileges | length > 0
+      when:
+        - nexus_privileges | length > 0
+        - not (nexus_sync_repositories_only | default(false) | bool)
 
     - name: Create/check roles
       ansible.builtin.include_tasks: call_script.yml
       vars:
         script_name: setup_roles_from_list
         call_args: "{{ nexus_roles }}"
-      when: nexus_roles | length > 0
+      when:
+        - nexus_roles | length > 0
+        - not (nexus_sync_repositories_only | default(false) | bool)
 
     - name: Create/check local users
       ansible.builtin.include_tasks: call_script.yml
@@ -169,16 +179,21 @@
         call_args:
           apply_passwords: "{{ nexus_apply_local_user_passwords | bool }}"
           users: "{{ nexus_local_users }}"
-      when: nexus_local_users | length > 0
+      when:
+        - nexus_local_users | length > 0
+        - not (nexus_sync_repositories_only | default(false) | bool)
 
     - name: Create/check ldap users
       ansible.builtin.include_tasks: call_script.yml
       vars:
         script_name: setup_ldap_users_from_list
         call_args: "{{ nexus_ldap_users }}"
-      when: nexus_ldap_users | length > 0
+      when:
+        - nexus_ldap_users | length > 0
+        - not (nexus_sync_repositories_only | default(false) | bool)
 
 - name: Configure anonymous access
+  when: not (nexus_sync_repositories_only | default(false) | bool)
   ansible.builtin.include_tasks: call_script.yml
   vars:
     script_name: setup_anonymous_access
@@ -186,6 +201,7 @@
       anonymous_access: "{{ nexus_anonymous_access }}"
 
 - name: Configure base url
+  when: not (nexus_sync_repositories_only | default(false) | bool)
   ansible.builtin.include_tasks: call_script.yml
   vars:
     script_name: setup_base_url
@@ -193,6 +209,7 @@
       base_url: "{{ nexus_public_scheme }}://{{ nexus_public_hostname }}/"
 
 - name: Configure realms
+  when: not (nexus_sync_repositories_only | default(false) | bool)
   ansible.builtin.include_tasks: call_script.yml
   vars:
     script_name: setup_realms
@@ -212,9 +229,12 @@
       capability_enabled: true
       capability_properties:
         httpHeader: "{{ nexus_rut_auth_header }}"
-  when: nexus_rut_auth_header is defined
+  when:
+    - nexus_rut_auth_header is defined
+    - not (nexus_sync_repositories_only | default(false) | bool)
 
 - name: Configure mail server
+  when: not (nexus_sync_repositories_only | default(false) | bool)
   ansible.builtin.uri:
     url: "{{ nexus_api_scheme }}://{{ nexus_api_hostname }}:{{ nexus_api_port }}{{ nexus_api_context_path }}service/rest/v1/email"
     user: admin
@@ -239,6 +259,7 @@
     status_code: 200,204
 
 - name: Configure branding capability
+  when: not (nexus_sync_repositories_only | default(false) | bool)
   ansible.builtin.include_tasks: call_script.yml
   vars:
     script_name: setup_capability
@@ -252,6 +273,7 @@
         headerEnabled: "{{ nexus_branding_header | length > 0 }}"
 
 - name: Configure audit capability
+  when: not (nexus_sync_repositories_only | default(false) | bool)
   ansible.builtin.include_tasks: call_script.yml
   vars:
     script_name: setup_capability
@@ -261,6 +283,7 @@
       capability_properties: {}
 
 - name: Configure log4j-visualizer capability
+  when: not (nexus_sync_repositories_only | default(false) | bool)
   ansible.builtin.include_tasks: call_script.yml
   vars:
     script_name: setup_capability
@@ -278,7 +301,9 @@
       capability_enabled: "{{ (nexus_default_role | length > 0) }}"
       capability_properties:
         role: "{{ nexus_default_role }}"
-  when: nexus_default_role | length > 0
+  when:
+    - nexus_default_role | length > 0
+    - not (nexus_sync_repositories_only | default(false) | bool)
 
 - name: Define backup task if backup is configured
   ansible.builtin.set_fact:
@@ -293,9 +318,13 @@
         taskProperties:
           language: groovy
           source: "{{ lookup('template', './templates/backup.groovy.j2') }}"
-  when: nexus_backup_configure | bool
+  when:
+    - nexus_backup_configure | bool
+    - not (nexus_sync_repositories_only | default(false) | bool)
 
 - name: Create scheduled tasks (with backup task if relevant)
   ansible.builtin.include_tasks: create_task_each.yml
   with_items: "{{ nexus_scheduled_tasks + _nexus_backup_task | default([]) }}"
-  when: nexus_run_provisionning | default(true) | bool
+  when:
+    - nexus_run_provisionning | default(true) | bool
+    - not (nexus_sync_repositories_only | default(false) | bool)

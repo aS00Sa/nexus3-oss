@@ -32,6 +32,11 @@ nexus_script_dir: "{{ nexus_installation_dir }}/{{ nexus_install_dir_name }}/etc
 nexus_plugin_urls: []
 nexus_onboarding_wizard: false
 
+# When true (e.g. -e nexus_sync_repositories_only=true): only process repo lists and call create_repos_from_list on Nexus.
+# Skips provisioning block 1 (LDAP, blobstores, content selectors), cleanup policies, RBAC users, anonymous/realms/mail/branding/scheduled tasks.
+# Still runs nexus_install (idempotent). Use after changing nexus_repos_* / group_vars APT-YUM definitions.
+nexus_sync_repositories_only: false
+
 # These are the default values for JVM Ram
 # don't touch those unless you have read
 # https://help.sonatype.com/repomanager3/system-requirements#SystemRequirements-Memory

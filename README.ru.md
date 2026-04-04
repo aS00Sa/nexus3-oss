@@ -93,57 +93,18 @@ ansible-playbook -i inventory-localdomain.ini install.yml \
 
 ### Клиенты: обновление ОС через Nexus (Debian 13 и AlmaLinux 10)
 
-Подставьте свой хост и схему доступа к Nexus (в примере ниже — из **`nexus_public_hostname`** и типичный прямой порт **8081**). Если перед Nexus стоит reverse proxy на **443**, используйте `https://<хост>/repository/...` **без** `:8081`.
-
-**Базовый шаблон URL в Nexus 3:**
-
-- APT: `http(s)://<NEXUS>/repository/<имя_репозитория>/`
-- YUM: `http(s)://<NEXUS>/repository/<имя_репозитория>/` (в конце слэш желателен)
-
-Имена APT-репозиториев в **`group_vars`** (в т.ч. `*-security`): см. таблицу выше; для клиентов **suite `*-security`** всегда указывайте **отдельный** `URIs` с суффиксом **`-security`** в имени репозитория Nexus. Далее в примере — только Debian 13; для **bookworm** / **noble** замените имена на **`apt-debian-12-bookworm-security`** / **`apt-ubuntu-24.04-noble-security`** и соответствующие **Suites**. YUM: **`yum-almalinux-10-x86_64-baseos`**, **`yum-almalinux-10-x86_64-appstream`**.
+Локальный Nexus по **HTTP** (порт **8081**): в примерах ниже подставьте IP или имя хоста (**`nexus_public_hostname`**). Шаблон пути: **`http://<NEXUS>:8081/repository/<имя>/`**. Имена APT/YUM — в таблицах выше; для **bookworm** / **noble** замените префиксы репозиториев и **Suites**. YUM: **`yum-almalinux-10-x86_64-baseos`**, **`yum-almalinux-10-x86_64-appstream`**.
 
 ---
 
 #### Debian 13 (trixie), APT
 
-1. Отключите или закомментируйте официальные зеркала в **`/etc/apt/sources.list`** и **`/etc/apt/sources.list.d/*.sources`** / **`*.list`**, чтобы не смешивать поток с Nexus.
+Отключите официальные зеркала в **`/etc/apt/sources.list`** и **`/etc/apt/sources.list.d/`**. После **`ansible-playbook install.yml`** в Nexus создаются **`apt-debian-13-trixie`**, **`...-updates`**, **`...-backports`**, **`...-security`** (см. **`group_vars/nexus/06-apt-debian-13-trixie-repos.yml`**).
 
-2. **По умолчанию для HTTPS к Nexus** (частый случай — свой TLS без корпоративного CA на клиенте): создайте **`/etc/apt/apt.conf.d/80nexus-https.conf`**:
+Если **`nexus_anonymous_access: false`**, нужна учётка с **`repo-readers`** (например **`repo-dev`** в **`group_vars/nexus/13-users-rbac.yml`**); пароль в **`auth.conf`** замените на свой (в примере — **`CHANGE_ME`**). В **`machine`** для HTTP в Debian 12+ укажите префикс **`http://`**, иначе возможен **401** при **`apt update`**.
 
 ```text
-Acquire::https::Verify-Peer "false";
-Acquire::https::Verify-Host "false";
-```
-
-Первая директива — то, что обычно требуется при самоподписанном или внутреннем сертификате; вторая — если не совпадает имя в сертификате. Если корневой CA Nexus установлен в системе как доверенный, этот файл можно **не** создавать (предпочтительнее для production).
-
-3. Создайте **`/etc/apt/sources.list.d/nexus-trixie.sources`** (deb822).
-
-**Как у штатного Debian 13**, но через Nexus: в deb822 списки **`URIs`** и **`Suites`** сопоставляются **по порядку** (одинаковое число элементов). Нельзя указывать **`trixie trixie-updates trixie-backports`** с **одним** URL **`.../apt-debian-13-trixie`** — у каждого suite свой proxy в Nexus. Для **`trixie-security`** — **отдельный** блок и репозиторий **`apt-debian-13-trixie-security`** (не **`apt-debian-13-trixie`**).
-
-После **`ansible-playbook install.yml`** в Nexus создаются **`apt-debian-13-trixie`**, **`apt-debian-13-trixie-updates`**, **`apt-debian-13-trixie-backports`**, **`apt-debian-13-trixie-security`** (см. **`group_vars/nexus/06-apt-debian-13-trixie-repos.yml`**).
-
-**HTTP :8081** (без TLS — шаг 2 с **`Acquire::https::...`** не нужен):
-
-```ini
-Types: deb deb-src
-URIs: http://192.168.1.70:8081/repository/apt-debian-13-trixie http://192.168.1.70:8081/repository/apt-debian-13-trixie-updates http://192.168.1.70:8081/repository/apt-debian-13-trixie-backports
-Suites: trixie trixie-updates trixie-backports
-Components: main
-Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
-
-Types: deb deb-src
-URIs: http://192.168.1.70:8081/repository/apt-debian-13-trixie-security
-Suites: trixie-security
-Components: main
-Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
-```
-
-Для **HTTPS** замените **`http://`** на **`https://`** на тех же путях (и при необходимости шаг 2 — **`80nexus-https.conf`**).
-
-Минимальный вариант (только **`trixie`** + **`trixie-security`**), если в Nexus не нужны updates/backports:
-
-```ini
+debian@nexus:~$ sudo vim /etc/apt/sources.list.d/debian.sources
 Types: deb
 URIs: http://192.168.1.70:8081/repository/apt-debian-13-trixie
 Suites: trixie
@@ -151,77 +112,33 @@ Components: main
 Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
 
 Types: deb
+URIs: http://192.168.1.70:8081/repository/apt-debian-13-trixie-updates
+Suites: trixie-updates
+Components: main
+Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+
+Types: deb
+URIs: http://192.168.1.70:8081/repository/apt-debian-13-trixie-backports
+Suites: trixie-backports
+Components: main
+Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
+
+Types: deb
 URIs: http://192.168.1.70:8081/repository/apt-debian-13-trixie-security
 Suites: trixie-security
 Components: main
 Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
 ```
 
-Ошибка **`... trixie-security InRelease' is not signed`** чаще всего из‑за **`URIs: .../apt-debian-13-trixie`** во втором блоке — нужен **`.../apt-debian-13-trixie-security`**. Аналогично **`trixie-updates`** / **`trixie-backports`** требуют **своих** имён репозиториев в Nexus, а не только **`apt-debian-13-trixie`**.
-
-Сообщение **`Unauthorized` / `401`** при **`apt update`**: либо включите анонимный доступ (**`nexus_anonymous_access: true`** в vars и прогон роли), либо задайте логин/пароль (ниже).
-
-##### Debian 13: авторизация под пользователем Nexus (Basic Auth)
-
-Учётка с **`repo-readers`** (например **`repo-dev`** из **`group_vars/nexus/13-users-rbac.yml`**). Два равноправных способа — **логин в URL** или **файл `auth.conf.d`** (не смешивайте оба на один и тот же хост без необходимости).
-
-**А) Логин и пароль в `http(s)://` (userinfo)** — проще для копирования, но пароль **виден** в **`sources`**, бэкапах и иногда в логах; спецсимволы в логине/пароле [**кодируйте в URL**](https://datatracker.ietf.org/doc/html/rfc3986) (например **`@`** → **`%40`**, **`:`** → **`%3A`**).
-
-Пример **`*.sources`** (HTTP; при **`deb deb-src` + trixie/updates/backports** добавьте **`user:pass@`** перед каждым из трёх URI в первом блоке):
-
-```ini
-Types: deb
-URIs: http://repo-dev:ВАШ_ПАРОЛЬ@192.168.1.70:8081/repository/apt-debian-13-trixie
-Suites: trixie
-Components: main
-Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
-
-Types: deb
-URIs: http://repo-dev:ВАШ_ПАРОЛЬ@192.168.1.70:8081/repository/apt-debian-13-trixie-security
-Suites: trixie-security
-Components: main
-Signed-By: /usr/share/keyrings/debian-archive-keyring.gpg
-```
-
-Строка **`sources.list`**:
-
 ```text
-deb [signed-by=/usr/share/keyrings/debian-archive-keyring.gpg] http://repo-dev:ВАШ_ПАРОЛЬ@192.168.1.70:8081/repository/apt-debian-13-trixie trixie main
-deb [signed-by=/usr/share/keyrings/debian-archive-keyring.gpg] http://repo-dev:ВАШ_ПАРОЛЬ@192.168.1.70:8081/repository/apt-debian-13-trixie-security trixie-security main
-```
-
-Поставьте **`chmod 600`** на файл с источниками, если храните пароль в URL.
-
-**Б) Отдельный файл** **`/etc/apt/auth.conf.d/90nexus.conf`** (пароль не в **`URIs`**):
-
-```text
-machine 192.168.1.70
+debian@nexus:~$ sudo vim /etc/apt/auth.conf.d/90nexus.conf
+machine http://192.168.1.70:8081
 login repo-dev
-password ВАШ_ПАРОЛЬ_ИЗ_ANSIBLE
+password CHANGE_ME
 ```
-
-Права только для root: **`sudo chmod 600 /etc/apt/auth.conf.d/90nexus.conf`**.
-
-Если **`apt update`** всё ещё отвечает **401**, для вашей версии APT может потребоваться **порт** в поле **`machine`** (как в URL):
-
-```text
-machine 192.168.1.70:8081
-login repo-dev
-password ВАШ_ПАРОЛЬ_ИЗ_ANSIBLE
-```
-
-Для **нескольких хостов** (IP и имя из сертификата) можно продублировать блок **`machine ... login ... password ...`**.
-
-Классические строки **`sources.list`** (эквивалент двум блокам выше, HTTP):
-
-```text
-deb [signed-by=/usr/share/keyrings/debian-archive-keyring.gpg] http://192.168.1.70:8081/repository/apt-debian-13-trixie trixie main
-deb [signed-by=/usr/share/keyrings/debian-archive-keyring.gpg] http://192.168.1.70:8081/repository/apt-debian-13-trixie-security trixie-security main
-```
-
-4. Обновление индекса и системы:
 
 ```bash
+sudo chmod 600 /etc/apt/auth.conf.d/90nexus.conf
 sudo apt update
 sudo apt full-upgrade
 ```
@@ -234,9 +151,7 @@ sudo apt full-upgrade
 
 1. Сохраните копии репозиториев: **`/etc/yum.repos.d/`**.
 2. Отключите штатные репозитории Alma (переименуйте или **`enabled=0`** в **`almalinux-*.repo`**), чтобы весь трафик шёл через Nexus.
-3. Создайте **`/etc/yum.repos.d/nexus-alma10.repo`**.
-
-Вариант **HTTP :8081** (проверка TLS к Nexus не используется):
+3. Создайте **`/etc/yum.repos.d/nexus-alma10.repo`** (пример ниже — локальный Nexus по HTTP, порт **8081**):
 
 ```ini
 [nexus-al10-baseos]
@@ -258,31 +173,7 @@ metadata_expire=86400
 gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-AlmaLinux-10
 ```
 
-Вариант **HTTPS** к Nexus — **по умолчанию отключите проверку TLS** (аналог apt), если нет доверенного CA на клиенте: в **каждой** секции добавьте **`sslverify=0`**:
-
-```ini
-[nexus-al10-baseos]
-name=AlmaLinux 10 BaseOS via Nexus (HTTPS)
-baseurl=https://nexus.btnxlocal.ru/repository/yum-almalinux-10-x86_64-baseos/
-enabled=1
-sslverify=0
-gpgcheck=1
-countme=1
-metadata_expire=86400
-gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-AlmaLinux-10
-
-[nexus-al10-appstream]
-name=AlmaLinux 10 AppStream via Nexus (HTTPS)
-baseurl=https://nexus.btnxlocal.ru/repository/yum-almalinux-10-x86_64-appstream/
-enabled=1
-sslverify=0
-gpgcheck=1
-countme=1
-metadata_expire=86400
-gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-AlmaLinux-10
-```
-
-Если RPM-GPG-KEY с другим именем на хосте — поправьте путь (**`rpm -qa gpg-pubkey*`** / каталог **`/etc/pki/rpm-gpg/`**). Для отладки без проверки подписи пакетов (нежелательно в бою) временно **`gpgcheck=0`**.
+Если имя ключа другое — поправьте **`gpgkey`**. Для отладки без проверки подписи пакетов (не в бою) временно **`gpgcheck=0`**.
 
 ##### AlmaLinux 10: авторизация под пользователем Nexus (Basic Auth)
 
@@ -295,7 +186,7 @@ gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-AlmaLinux-10
 name=AlmaLinux 10 BaseOS via Nexus (auth)
 baseurl=http://192.168.1.70:8081/repository/yum-almalinux-10-x86_64-baseos/
 username=repo-dev
-password=ВАШ_ПАРОЛЬ_ИЗ_ANSIBLE
+password=CHANGE_ME
 enabled=1
 gpgcheck=1
 countme=1
@@ -306,7 +197,7 @@ gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-AlmaLinux-10
 name=AlmaLinux 10 AppStream via Nexus (auth)
 baseurl=http://192.168.1.70:8081/repository/yum-almalinux-10-x86_64-appstream/
 username=repo-dev
-password=ВАШ_ПАРОЛЬ_ИЗ_ANSIBLE
+password=CHANGE_ME
 enabled=1
 gpgcheck=1
 countme=1
