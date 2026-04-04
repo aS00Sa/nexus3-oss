@@ -141,6 +141,8 @@ ansible-playbook -i inventory.ini install.yml -u root \
 | `apt-debian-12-bookworm` | https://deb.debian.org/debian | bookworm (Debian 12) |
 | `apt-debian-12-bookworm-security` | https://deb.debian.org/debian-security | bookworm-security (Debian 12) |
 | `apt-debian-13-trixie` | https://deb.debian.org/debian | trixie (Debian 13) |
+| `apt-debian-13-trixie-updates` | https://deb.debian.org/debian | trixie-updates (Debian 13) |
+| `apt-debian-13-trixie-backports` | https://deb.debian.org/debian | trixie-backports (Debian 13) |
 | `apt-debian-13-trixie-security` | https://deb.debian.org/debian-security | trixie-security (Debian 13) |
 
 ### YUM (`nexus_config_yum: true`)

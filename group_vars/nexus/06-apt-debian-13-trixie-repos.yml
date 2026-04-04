@@ -1,9 +1,17 @@
 ---
-# Debian 13 (trixie): отдельный прокси на каждый suite (нельзя вешать trixie-security на репо с distribution: trixie).
+# Debian 13 (trixie): отдельный прокси на каждый distribution (как в официальных sources: trixie, trixie-updates, trixie-backports, trixie-security).
 nexus_apt_proxy_debian_13:
   - name: apt-debian-13-trixie
     remote_url: https://deb.debian.org/debian
     distribution: trixie
+    flat: false
+  - name: apt-debian-13-trixie-updates
+    remote_url: https://deb.debian.org/debian
+    distribution: trixie-updates
+    flat: false
+  - name: apt-debian-13-trixie-backports
+    remote_url: https://deb.debian.org/debian
+    distribution: trixie-backports
     flat: false
   - name: apt-debian-13-trixie-security
     remote_url: https://deb.debian.org/debian-security

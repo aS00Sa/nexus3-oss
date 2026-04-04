@@ -20,7 +20,8 @@
 #   Docker: docker-proxy, docker-hosted, docker-group
 #   NPM: npm-proxy, npm-hosted, npm-group
 #   APT: apt-ubuntu-24.04-noble, apt-ubuntu-24.04-noble-security, apt-debian-12-bookworm,
-#        apt-debian-12-bookworm-security, apt-debian-13-trixie, apt-debian-13-trixie-security
+#        apt-debian-12-bookworm-security, apt-debian-13-trixie, apt-debian-13-trixie-updates,
+#        apt-debian-13-trixie-backports, apt-debian-13-trixie-security
 #   YUM: yum-almalinux-9-x86_64-baseos, yum-almalinux-9-x86_64-appstream,
 #        yum-almalinux-10-x86_64-baseos, yum-almalinux-10-x86_64-appstream
 #
