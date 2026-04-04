@@ -86,6 +86,20 @@ ansible-playbook -i inventory-localdomain.ini install.yml \
 
 Каталоги **blob-apt** и **blob-yum** заданы в **`vars/blob_vars.yml`**.
 
+### Docker hosted: очистка тегов `dev` / `test` / `main`
+
+В **`group_vars/nexus/02-docker-repos.yml`** к репозиторию **`docker-hosted`** подключены три политики (имена в Nexus):
+
+| Политика | Теги (regex) | Срок (дни), blob + не скачивали |
+|----------|----------------|----------------------------------|
+| `docker_cleanup_dev_tags` | `dev`, `*-dev`, пути `.../manifests/dev` и `.../manifests/*-dev` | 7 |
+| `docker_cleanup_test_tags` | `test`, `*-test`, аналогично manifests | 21 |
+| `docker_cleanup_main_tags` | `main`, `master`, `*-main`, `*-master` | 60 |
+
+Условия **lastBlobUpdated** и **lastDownloaded** действуют **одновременно** (AND). После срабатывания политик имеет смысл цепочка: встроенная задача **Cleanup repositories using their associated policies** → ночной **Docker GC** (`12-scheduled-tasks.yml`) → **Compact blob store**.
+
+Если раньше использовались политики `docker_*_aggressive_cleanup`, после деплоя старые записи можно удалить вручную в **Repository → Cleanup policies**, чтобы не путаться в списке.
+
 ## Blobstore: «сжатие» и обслуживание
 
 В Nexus **нет прозрачного gzip-хранилища** артефактов. Освобождение места на диске делается задачей **Compact blob store** (`typeId: blobstore.compact`): убираются неиспользуемые блоки после удаления компонентов.

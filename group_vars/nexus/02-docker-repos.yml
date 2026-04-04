@@ -1,15 +1,43 @@
 ---
+# Docker proxy / hosted / group.
+#
+# Политики очистки (cleanup) для docker-hosted:
+# - К репозиторию подключены ВСЕ три политики; каждая задаёт свои сроки для своих тегов.
+# - Условия в одной политике объединяются по AND: и возраст blob, и «не скачивали» N дней.
+# - Удаляются только подходящие под regex теги (manifest); слои потом подчищает Docker GC + compact.
+#
+# Регулярные выражения (Java regex, см. Asset Name Matcher в документации Sonatype для вашей БД):
+#   покрывают тег вида «dev», «1.0-dev», «feature-dev», а также путь .../manifests/<тег> для PostgreSQL/H2.
+#
+# Частота применения политик: в Nexus есть системная задача
+# «Admin - Cleanup repositories using their associated policies» (по умолчанию часто — раз в час).
+# Ночной Docker GC и weekly compact — в 12-scheduled-tasks.yml.
+#
+# Миграция: ранее использовались имена docker_*_aggressive_cleanup — новые политики
+# создаются с именами docker_cleanup_*_tags; старые можно удалить в UI Nexus.
+
 nexus_config_docker: true
+
+# Сроки (дни) до удаления: и lastBlobUpdated, и lastDownloaded (AND). Меняйте числа в criteria.* ниже
+# вместе с этими переменными (они же подставляются в notes для UI Nexus).
+nexus_docker_cleanup_dev_days: 7
+nexus_docker_cleanup_test_days: 21
+nexus_docker_cleanup_main_days: 60
+
 nexus_repos_docker_proxy:
   - name: docker-proxy
     http_port: "{{ nexus_docker_proxy_port }}"
     remote_url: https://registry-1.docker.io
     index_type: HUB
+
 nexus_repos_docker_hosted:
   - name: docker-hosted
     http_port: "{{ nexus_docker_hosted_port }}"
     cleanup_policies:
-      - docker_dev_aggressive_cleanup
+      - docker_cleanup_dev_tags
+      - docker_cleanup_test_tags
+      - docker_cleanup_main_tags
+
 nexus_repos_docker_group:
   - name: docker-group
     http_port: "{{ nexus_docker_group_port }}"
@@ -18,11 +46,42 @@ nexus_repos_docker_group:
       - docker-proxy
 
 nexus_repos_cleanup_policies:
-  - name: docker_dev_aggressive_cleanup
+  # Теги dev и *-dev (не задевает prod-теги без -dev, если они не называются ровно "dev")
+  - name: docker_cleanup_dev_tags
     format: docker
     mode:
-    notes: Cleanup for docker-hosted images with -dev tag suffix
+    notes: >
+      Dev-линия: теги «dev» или суффикс «-dev».
+      Удаление если не обновляли и не скачивали {{ nexus_docker_cleanup_dev_days }} дн.
     criteria:
-      lastBlobUpdated: 14
-      lastDownloaded: 14
-      regexKey: ".*-dev$"
+      lastBlobUpdated: 7
+      lastDownloaded: 7
+      regexKey: >-
+        (^dev$|.*-dev$|(^|/)manifests/dev(@[^/]+)?$|(^|/)manifests/[^/]+-dev(@[^/]+)?$)
+
+  # Теги test и *-test
+  - name: docker_cleanup_test_tags
+    format: docker
+    mode:
+    notes: >
+      Test: теги «test» или суффикс «-test».
+      Удаление если не обновляли и не скачивали {{ nexus_docker_cleanup_test_days }} дн.
+    criteria:
+      lastBlobUpdated: 21
+      lastDownloaded: 21
+      regexKey: >-
+        (^test$|.*-test$|(^|/)manifests/test(@[^/]+)?$|(^|/)manifests/[^/]+-test(@[^/]+)?$)
+
+  # Теги main / master и *-main / *-master (основная ветка сборок)
+  - name: docker_cleanup_main_tags
+    format: docker
+    mode:
+    notes: >
+      Основная линия: теги «main» или «master», либо суффиксы «-main» / «-master».
+      Удаление если не обновляли и не скачивали {{ nexus_docker_cleanup_main_days }} дн.
+      При необходимости увеличьте nexus_docker_cleanup_main_days или уберите «master» из regex.
+    criteria:
+      lastBlobUpdated: 60
+      lastDownloaded: 60
+      regexKey: >-
+        (^main$|^master$|.*-main$|.*-master$|(^|/)manifests/main(@[^/]+)?$|(^|/)manifests/master(@[^/]+)?$|(^|/)manifests/[^/]+-main(@[^/]+)?$|(^|/)manifests/[^/]+-master(@[^/]+)?$)
