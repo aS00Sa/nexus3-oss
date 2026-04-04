@@ -6,6 +6,8 @@
 [![GitHub licence](https://img.shields.io/github/license/ansible-role/nexus3-oss)](https://github.com/aS00Sa/nexus3-oss/blob/main/LICENSE.md)
 # Ansible Role: Nexus 3 OSS
 
+**Русская документация:** [README.ru.md](README.ru.md) (деплой `install.yml`, репозитории APT/YUM, blobstore, расписание, бэкапы).
+
 This role installs and configures Nexus Repository Manager OSS version 3.x.
 
 All configuration can be updated by re-running the role, except for the [blobstores](https://help.sonatype.com/display/NXRM3/Repository+Management#RepositoryManagement-BlobStores) related settings, which are immutable in nexus.
@@ -128,7 +130,7 @@ ansible-playbook -i inventory.ini install.yml -u root \
 --private-key ~/.ssh/id_ed25519 -vvv 2>&1 | tee nexus-$(date +%Y%m%d-%H%M).log
    ```
 
-2. **Репозитории Linux в примере `install.yml`** — переменные вынесены в файлы `nexus-apt-*.yml`, `nexus-yum-*.yml` и агрегаторы `nexus-apt-repos.yml`, `nexus-yum-repos.yml` в корне репозитория. Итоговые имена репозиториев в Nexus и upstream:
+2. **Репозитории Linux в примере `install.yml`** — переменные для группы `nexus` лежат в **`group_vars/nexus/`** (файлы `01-*.yml` … `13-*.yml`: APT/YUM, Docker, NPM, бэкап, задания, RBAC). Итоговые имена репозиториев в Nexus и upstream:
 
 ### APT (`nexus_config_apt: true`)
 
@@ -148,6 +150,8 @@ ansible-playbook -i inventory.ini install.yml -u root \
 | `yum-almalinux-10-x86_64-appstream` | https://repo.almalinux.org/almalinux/10/AppStream/x86_64/os/ (AlmaLinux 10 AppStream x86_64) |
 
 Blobstore’ы **blob-apt** и **blob-yum** уже описаны в `vars/blob_vars.yml`, в плейбуке отдельно не задавались.
+
+Кратко на русском: деплой, расписание (compact, Docker GC), еженедельный бэкап — в **[README.ru.md](README.ru.md)**.
 
 ## Role Variables
 

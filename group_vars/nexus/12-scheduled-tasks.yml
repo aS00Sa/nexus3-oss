@@ -1,0 +1,34 @@
+---
+# Задания Nexus: очистка Docker и сжатие blobstore (compact — освобождение места, не gzip).
+# Имена blobstore как в vars/blob_vars.yml (префикс blob-).
+nexus_scheduled_tasks:
+  - name: Docker - Delete unused manifests and images (docker-hosted nightly)
+    cron: "0 30 2 * * ?"
+    typeId: "repository.docker.gc"
+    taskProperties:
+      repositoryName: "docker-hosted"
+  - name: Compact blobstore default (weekly Sun 04:00)
+    cron: "0 0 4 ? * SUN"
+    typeId: blobstore.compact
+    taskProperties:
+      blobstoreName: default
+  - name: Compact blobstore blob-docker (weekly Sun 04:15)
+    cron: "0 15 4 ? * SUN"
+    typeId: blobstore.compact
+    taskProperties:
+      blobstoreName: blob-docker
+  - name: Compact blobstore blob-npm (weekly Sun 04:30)
+    cron: "0 30 4 ? * SUN"
+    typeId: blobstore.compact
+    taskProperties:
+      blobstoreName: blob-npm
+  - name: Compact blobstore blob-apt (weekly Sun 04:45)
+    cron: "0 45 4 ? * SUN"
+    typeId: blobstore.compact
+    taskProperties:
+      blobstoreName: blob-apt
+  - name: Compact blobstore blob-yum (weekly Sun 05:00)
+    cron: "0 0 5 ? * SUN"
+    typeId: blobstore.compact
+    taskProperties:
+      blobstoreName: blob-yum

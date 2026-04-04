@@ -1,18 +1,7 @@
 ---
+# Переменные для группы [nexus] — каталог group_vars/nexus/ (файлы 01–*.yml задают порядок).
 - name: Deploy Nexus OSS
   hosts: nexus
   become: true
-  vars_files:
-    - nexus-core.yml
-    - nexus-docker-repos.yml
-    - nexus-npm-repos.yml
-    - nexus-apt-ubuntu-24.04-noble-repos.yml
-    - nexus-apt-debian-12-bookworm-repos.yml
-    - nexus-apt-debian-13-trixie-repos.yml
-    - nexus-apt-repos.yml
-    - nexus-yum-almalinux-9-repos.yml
-    - nexus-yum-almalinux-10-repos.yml
-    - nexus-yum-repos.yml
-    - nexus-rbac-gitlab.yml
   roles:
     - role: ansible-role-nexus3-oss

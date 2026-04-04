@@ -26,10 +26,3 @@ nexus_repos_cleanup_policies:
       lastBlobUpdated: 14
       lastDownloaded: 14
       regexKey: ".*-dev$"
-
-nexus_tasks:
-  - name: Docker - Delete unused manifests and images (docker-hosted nightly)
-    cron: "0 30 2 * * ?"
-    typeId: "repository.docker.gc"
-    taskProperties:
-      repositoryName: "docker-hosted"

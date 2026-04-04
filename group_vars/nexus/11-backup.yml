@@ -1,0 +1,12 @@
+---
+# Резервное копирование БД Nexus (Orient) и blobstore в каталог nexus_backup_dir (скрипт в Nexus).
+# Расписание: Quartz cron, раз в неделю. Ротация хранит несколько последних полных копий.
+nexus_backup_configure: true
+nexus_backup_schedule_type: cron
+# Воскресенье 02:00:00 (сек мин час день_мес месяц день_недели)
+nexus_backup_cron: "0 0 2 ? * SUN"
+nexus_backup_dir: /var/nexus-backup
+nexus_backup_dir_create: true
+nexus_backup_rotate: true
+nexus_backup_rotate_first: false
+nexus_backup_keep_rotations: 4
