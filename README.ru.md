@@ -27,7 +27,7 @@
 | `08-09-yum-almalinux-…`, `10-yum-repos.yml` | YUM (агрегатор в `10`) |
 | `11-backup.yml` | Еженедельный бэкап БД и blobstore |
 | `12-scheduled-tasks.yml` | Docker GC, compact blobstore |
-| `13-rbac-gitlab.yml` | Роли, пользователь GitLab CI |
+| `13-users-rbac.yml` | Пользователи (repo-dev/test/stage/prod, gitlab-ci), роли и привилегии |
 
 Почему не `defaults/main.yml` роли: там значения по умолчанию для потребителей Galaxy; пример инсталляции удобнее держать отдельно в `group_vars`.
 
@@ -42,6 +42,28 @@ ansible-playbook -i inventory-localdomain.ini install.yml \
 ```
 
 Подставьте свой инвентарь и ключ. Для WSL путь к репозиторию: `/mnt/c/.../ansible-role-nexus3-oss`.
+
+## Локальные пользователи Nexus (`13-users-rbac.yml`)
+
+У каждой учётной записи свои переменные: **`*_nexus_username`**, **`*_nexus_password`**, **`*_nexus_email`** (по тому же принципу, что и `gitlab_ci_*`). Пароли задавайте через **Vault**.
+
+| Логин (по умолчанию) | Переменная пароля | Роли | Доступ к репозиториям |
+|----------------------|-------------------|------|------------------------|
+| `repo-dev` | `repo_dev_nexus_password` | `repo-readers` | Все репозитории из примера — **чтение и browse**, Docker login; **без записи** |
+| `repo-test` | `repo_test_nexus_password` | `repo-readers` | то же |
+| `repo-stage` | `repo_stage_nexus_password` | `repo-readers` | то же |
+| `repo-prod` | `repo_prod_nexus_password` | `repo-readers` | то же |
+| `gitlab-ci` | `gitlab_ci_nexus_password` | `repo-readers`, `ci-publisher` | Как у read-only **плюс запись** в **docker-hosted**, **npm-hosted**, **private-release** |
+
+**Имена репозиториев** в текущем примере `group_vars` (для ориентира):
+
+- **Maven:** `central`, `jboss`, `private-release`, `public`
+- **Docker:** `docker-proxy`, `docker-hosted`, `docker-group`
+- **NPM:** `npm-proxy`, `npm-hosted`, `npm-group`
+- **APT:** `apt-ubuntu-24.04-noble`, `apt-debian-12-bookworm`, `apt-debian-13-trixie`
+- **YUM:** `yum-almalinux-9-x86_64-baseos`, `yum-almalinux-9-x86_64-appstream`, `yum-almalinux-10-x86_64-baseos`, `yum-almalinux-10-x86_64-appstream`
+
+Та же сводка продублирована комментарием в начале **`group_vars/nexus/13-users-rbac.yml`**.
 
 ## Репозитории Linux (имена в Nexus)
 
@@ -104,7 +126,7 @@ ansible-playbook -i inventory-localdomain.ini install.yml \
 ## Безопасность
 
 - Желаемый пароль администратора храните в **`group_vars/nexus/01-core.yml`** (**`nexus_admin_password`**) или в Vault; не коммитьте секреты в открытом виде.
-- Пользователь **gitlab-ci** и пароль **`CHANGE_ME`** в **`group_vars/nexus/13-rbac-gitlab.yml`** смените перед production (при необходимости один прогон с **`nexus_apply_local_user_passwords: true`**).
+- Пароли **`CHANGE_ME`** в **`group_vars/nexus/13-users-rbac.yml`** (в т.ч. **gitlab-ci** и read-only учётки) задайте через Vault; для принудительной смены паролей из плейбука — **`nexus_apply_local_user_passwords: true`**.
 
 ## Лицензия и авторы
 

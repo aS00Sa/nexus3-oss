@@ -1,0 +1,182 @@
+---
+# Локальные пользователи, роли и привилегии Nexus.
+# Каждый пользователь задаётся тройкой переменных (как gitlab-ci): *_nexus_username, *_nexus_password, *_nexus_email.
+# Пароли — через Ansible Vault.
+#
+# ---------------------------------------------------------------------------
+# Сводная таблица (логин = значение username; пароль = переменная для Vault)
+# ---------------------------------------------------------------------------
+# | Логин (username var)          | Пароль (var)                  | Роли                         | Репозитории / доступ |
+# |-------------------------------|-------------------------------|------------------------------|----------------------|
+# | {{ repo_dev_nexus_username }} | {{ repo_dev_nexus_password }} | repo-readers                 | Все ниже — read/browse; запись нет |
+# | {{ repo_test_nexus_username }}| {{ repo_test_nexus_password }}| repo-readers                 | то же |
+# | {{ repo_stage_nexus_username }}| {{ repo_stage_nexus_password }}| repo-readers               | то же |
+# | {{ repo_prod_nexus_username }}| {{ repo_prod_nexus_password }}| repo-readers                 | то же |
+# | {{ gitlab_ci_nexus_username }}| {{ gitlab_ci_nexus_password }}| repo-readers, ci-publisher   | Все — read/browse; ЗАПИСЬ: docker-hosted, npm-hosted, private-release |
+# ---------------------------------------------------------------------------
+#
+# Репозитории в примере group_vars (имена в Nexus), для repo-readers — pull/browse (+ docker login):
+#   Maven: central, jboss, private-release, public
+#   Docker: docker-proxy, docker-hosted, docker-group
+#   NPM: npm-proxy, npm-hosted, npm-group
+#   APT: apt-ubuntu-24.04-noble, apt-debian-12-bookworm, apt-debian-13-trixie
+#   YUM: yum-almalinux-9-x86_64-baseos, yum-almalinux-9-x86_64-appstream,
+#        yum-almalinux-10-x86_64-baseos, yum-almalinux-10-x86_64-appstream
+#
+# Роли:
+#   repo-readers — nx-search-read, docker-login-search-all, wildcard read/browse на все репозитории.
+#   ci-publisher — add/edit/read/browse на docker-hosted, npm-hosted, private-release (дополнительно к чтению).
+# ---------------------------------------------------------------------------
+
+# --- repo-dev
+repo_dev_nexus_username: "repo-dev"
+repo_dev_nexus_password: "CHANGE_ME"
+repo_dev_nexus_email: "repo-dev@example.local"
+
+# --- repo-test
+repo_test_nexus_username: "repo-test"
+repo_test_nexus_password: "CHANGE_ME"
+repo_test_nexus_email: "repo-test@example.local"
+
+# --- repo-stage
+repo_stage_nexus_username: "repo-stage"
+repo_stage_nexus_password: "CHANGE_ME"
+repo_stage_nexus_email: "repo-stage@example.local"
+
+# --- repo-prod
+repo_prod_nexus_username: "repo-prod"
+repo_prod_nexus_password: "CHANGE_ME"
+repo_prod_nexus_email: "repo-prod@example.local"
+
+# --- gitlab-ci
+gitlab_ci_nexus_username: "gitlab-ci"
+gitlab_ci_nexus_password: "CHANGE_ME"
+gitlab_ci_nexus_email: "gitlab-ci@example.local"
+
+nexus_content_selectors:
+  - name: docker-login
+    description: Selector for docker login privilege
+    search_expression: format == "docker" and path=~"/v2/"
+  - name: docker-hosted-all
+    description: All docker paths within docker-hosted
+    search_expression: format == "docker" and path=~"/v2/"
+
+nexus_privileges:
+  - name: wildcard-all-repos-read
+    type: wildcard
+    format: ""
+    repository: ""
+    description: Read components in any repository (all formats)
+    pattern: nexus:repository-view:*:*:read
+    actions: []
+  - name: wildcard-all-repos-browse
+    type: wildcard
+    format: ""
+    repository: ""
+    description: Browse any repository (all formats)
+    pattern: nexus:repository-view:*:*:browse
+    actions: []
+
+  - name: docker-login-search-all
+    type: repository-content-selector
+    contentSelector: docker-login
+    description: Docker registry login and API paths against all repos
+    repository: "*"
+    actions:
+      - read
+      - browse
+
+  - name: docker-hosted-rw
+    type: repository-content-selector
+    contentSelector: docker-hosted-all
+    description: Read/write/browse docker-hosted (push образов)
+    repository: docker-hosted
+    actions:
+      - read
+      - browse
+      - add
+      - edit
+
+  - name: npm-hosted-ci-rw
+    type: repository-view
+    format: npm
+    repository: npm-hosted
+    description: CI publish to npm-hosted
+    actions:
+      - read
+      - browse
+      - add
+      - edit
+
+  - name: maven-private-release-ci-rw
+    type: repository-view
+    format: maven2
+    repository: private-release
+    description: CI deploy to Maven hosted private-release
+    actions:
+      - read
+      - browse
+      - add
+      - edit
+
+nexus_roles:
+  - id: repo-readers
+    name: repo-readers
+    description: Read-only Docker registry + NPM + все репозитории (pull/browse)
+    privileges:
+      - nx-search-read
+      - docker-login-search-all
+      - wildcard-all-repos-read
+      - wildcard-all-repos-browse
+    roles: []
+
+  - id: ci-publisher
+    name: ci-publisher
+    description: Публикация в hosted (Docker, NPM, Maven), плюс требуемые права на эти репозитории
+    privileges:
+      - docker-hosted-rw
+      - npm-hosted-ci-rw
+      - maven-private-release-ci-rw
+    roles: []
+
+nexus_local_users:
+  - username: "{{ repo_dev_nexus_username }}"
+    first_name: Repo
+    last_name: Dev
+    email: "{{ repo_dev_nexus_email }}"
+    password: "{{ repo_dev_nexus_password }}"
+    roles:
+      - repo-readers
+
+  - username: "{{ repo_test_nexus_username }}"
+    first_name: Repo
+    last_name: Test
+    email: "{{ repo_test_nexus_email }}"
+    password: "{{ repo_test_nexus_password }}"
+    roles:
+      - repo-readers
+
+  - username: "{{ repo_stage_nexus_username }}"
+    first_name: Repo
+    last_name: Stage
+    email: "{{ repo_stage_nexus_email }}"
+    password: "{{ repo_stage_nexus_password }}"
+    roles:
+      - repo-readers
+
+  - username: "{{ repo_prod_nexus_username }}"
+    first_name: Repo
+    last_name: Prod
+    email: "{{ repo_prod_nexus_email }}"
+    password: "{{ repo_prod_nexus_password }}"
+    roles:
+      - repo-readers
+
+  - username: "{{ gitlab_ci_nexus_username }}"
+    first_name: GitLab
+    last_name: CI
+    email: "{{ gitlab_ci_nexus_email }}"
+    password: "{{ gitlab_ci_nexus_password }}"
+    roles:
+      - repo-readers
+      - ci-publisher
