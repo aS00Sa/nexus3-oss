@@ -32,5 +32,6 @@ playbooks/generated/*
 # Локальный wg-quick конфиг и список доменов (имена задаются nexus_wireguard_config_file / nexus_wireguard_domains_file)
 templates/WG1.conf
 templates/WG1.domains
+templates/WG1.static
 # Опционально: локальные overrides
 group_vars/nexus/00-wireguard.yml

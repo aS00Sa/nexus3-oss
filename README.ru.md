@@ -21,9 +21,9 @@
 1. Положите файл в **`templates/{{ nexus_wireguard_config_file }}`** роли (по умолчанию **`templates/WG1.conf`**). Обычно файл в **`.gitignore`**, в git не коммитится.
 2. При необходимости смените **`nexus_wireguard_interface`** (имя интерфейса и юнита **`wg-quick@…`**).
 
-**Маршрутизация по доменам (split tunnel):** рабочий список лежит **на Nexus** в **`/etc/wireguard/<interface>.domains`** (рядом по смыслу с **`…/wg1.conf`**): **один домен на строку**, строки с **`#`** — комментарии. **Повторный деплой этот файл не перезаписывает** (`force: false`). Скрипт и таймер читают только его (**`getent ahosts`**), **`PublicKey`** пира из **`.conf`**, **`wg set … allowed-ips`**; плюс **`nexus_wireguard_allowed_ips_static`** из Ansible (редко нужно). При **первом** появлении файла на хосте: либо копируется **`templates/{{ nexus_wireguard_domains_file }}`** (по умолчанию **`WG1.domains`**, опционально рядом с **`WG1.conf`**), либо создаётся из **`nexus_wireguard_domains_seed`** в **`defaults/main.yml`** (типичные **npm** / **HashiCorp** / **MongoDB**). Дальше список меняйте **вручную на сервере**. Отключить скрипт и таймер: **`nexus_wireguard_split_tunnel: false`**.
+**Маршрутизация по доменам (split tunnel):** на Nexus два текстовых файла (деплой **не перезаписывает**, если уже есть): **`/etc/wireguard/<interface>.domains`** — **один FQDN на строку**; **`/etc/wireguard/<interface>.static`** — **один CIDR/prefix на строку** (например **`10.0.0.0/24`**). Строки с **`#`** — комментарии. Скрипт и таймер: **`getent ahosts`** по доменам, **`PublicKey`** пира из **`.conf`**, **`wg set … allowed-ips`**. При **первом** создании: либо **`templates/WG1.domains`** / **`templates/WG1.static`** (имена задаются **`nexus_wireguard_domains_file`**, **`nexus_wireguard_static_file`**), либо начальное содержимое из **`nexus_wireguard_domains_seed`** / **`nexus_wireguard_static_seed`** в **`defaults/main.yml`**. Дальше правьте **на сервере**. Отключить скрипт и таймер: **`nexus_wireguard_split_tunnel: false`**.
 
-Пакеты: **`wireguard-tools`**. Примеры: **`examples/wireguard-wg1-group_vars.yml`**, формат доменов — **`examples/WG1.domains`**.
+Пакеты: **`wireguard-tools`**. Примеры: **`examples/wireguard-wg1-group_vars.yml`**, **`examples/WG1.domains`**, **`examples/WG1.static`**.
 
 ## Пример деплоя (`install.yml`)
 
@@ -39,7 +39,7 @@
 | `11-backup.yml` | Еженедельный бэкап БД и blobstore |
 | `12-scheduled-tasks.yml` | Docker GC, compact blobstore |
 | `13-users-rbac.yml` | Пользователи (repo-dev/test/stage/prod, gitlab-ci), роли и привилегии |
-| `14-wireguard-nexus.yml` | WireGuard на хосте Nexus (`templates/WG1.conf`); split — файл **`/etc/wireguard/wg1.domains`** на хосте |
+| `14-wireguard-nexus.yml` | WireGuard на хосте Nexus (`templates/WG1.conf`); split — **`/etc/wireguard/wg1.domains`** и **`wg1.static`** на хосте |
 | `15-raw-vendor-repos.yml` | Raw: HashiCorp releases, MongoDB repo + `raw-all` |
 
 Почему не `defaults/main.yml` роли: там значения по умолчанию для потребителей Galaxy; пример инсталляции удобнее держать отдельно в `group_vars`.

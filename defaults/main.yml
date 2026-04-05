@@ -208,10 +208,12 @@ nexus_wireguard_interface: wg1
 nexus_wireguard_config_file: WG1.conf
 # Рядом с WG1.conf: опциональный начальный список доменов (копируется на хост один раз, пока нет /etc/wireguard/<iface>.domains).
 nexus_wireguard_domains_file: WG1.domains
-# Динамический split-tunnel: скрипт + PostUp + timer читают список только с хоста (/etc/wireguard/<iface>.domains), деплой файл не перезаписывает.
+# Рядом с WG1.domains: статические CIDR/prefix на хосте → /etc/wireguard/<iface>.static (деплой не перезаписывает).
+nexus_wireguard_static_file: WG1.static
+# Динамический split-tunnel: скрипт + PostUp + timer читают домены и статику только с хоста (.domains / .static).
 nexus_wireguard_split_tunnel: true
-# Статические CIDR в скрипте (редко нужны); основной список — файл на хосте.
-nexus_wireguard_allowed_ips_static: []
+# Начальное наполнение .static при первом деплое, если нет templates/{{ nexus_wireguard_static_file }}; дальше правка на Nexus.
+nexus_wireguard_static_seed: []
 # Только начальное наполнение .domains при первом деплое, если нет templates/{{ nexus_wireguard_domains_file }}.
 # Дальше правьте файл на Nexus вручную. npm/PM2, HashiCorp, MongoDB — типичные строки ниже.
 nexus_wireguard_domains_seed:

@@ -1,26 +1,26 @@
 #!/bin/bash
-# Обновление AllowedIPs пира по /etc/wireguard/<iface>.domains (правка вручную на хосте; деплой не трогает файл).
+# AllowedIPs: /etc/wireguard/<iface>.static (CIDR на строку) и .domains (FQDN); деплой эти файлы не перезаписывает.
 set -euo pipefail
 IFACE="{{ nexus_wireguard_interface }}"
 CONF="/etc/wireguard/${IFACE}.conf"
+STATIC_FILE="/etc/wireguard/${IFACE}.static"
 DOMAINS_FILE="/etc/wireguard/${IFACE}.domains"
 PEER="$(grep -m1 '^PublicKey' "$CONF" | sed 's/^PublicKey *= *//;s/[[:space:]]*$//')"
 if [ -z "$PEER" ]; then
   echo "nexus-wg-refresh: no PublicKey in $CONF" >&2
   exit 1
 fi
-STATIC_IPS=(
-{% for cidr in nexus_wireguard_allowed_ips_static %}
-  "{{ cidr }}"
-{% endfor %}
-)
 collect_ips() {
-  local out="" sep="" d
-  for cidr in "${STATIC_IPS[@]}"; do
-    [ -z "$cidr" ] && continue
-    out="${out}${sep}${cidr}"
-    sep=","
-  done
+  local out="" sep="" d c
+  if [ -f "$STATIC_FILE" ]; then
+    while IFS= read -r line || [ -n "$line" ]; do
+      [[ "$line" =~ ^[[:space:]]*# ]] && continue
+      c="$(printf '%s' "$line" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+      [ -z "$c" ] && continue
+      out="${out}${sep}${c}"
+      sep=","
+    done < "$STATIC_FILE"
+  fi
   if [ ! -f "$DOMAINS_FILE" ]; then
     echo "$out"
     return 0
@@ -43,7 +43,7 @@ collect_ips() {
 }
 ALLOWED="$(collect_ips)"
 if [ -z "$ALLOWED" ]; then
-  echo "nexus-wg-refresh: nothing to apply (нет статики и нет резолва из $DOMAINS_FILE) — оставляем AllowedIPs из $CONF" >&2
+  echo "nexus-wg-refresh: nothing to apply (пусто $STATIC_FILE и нет резолва из $DOMAINS_FILE) — оставляем AllowedIPs из $CONF" >&2
   exit 0
 fi
 wg set "$IFACE" peer "$PEER" allowed-ips "$ALLOWED"

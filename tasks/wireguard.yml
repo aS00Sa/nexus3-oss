@@ -1,7 +1,8 @@
 ---
 # Устанавливает wireguard-tools, копирует ваш конфиг с контроллера на интерфейс wg-quick@<имя>.
-# Конфиг: templates/{{ nexus_wireguard_config_file }}. Список доменов на хосте: /etc/wireguard/<iface>.domains
-# (создаётся один раз; force: false). Опционально templates/{{ nexus_wireguard_domains_file }} или nexus_wireguard_domains_seed.
+# Конфиг: templates/{{ nexus_wireguard_config_file }}.
+# На хосте: /etc/wireguard/<iface>.domains и .static (создаются один раз, force: false).
+# Опционально templates/WG1.domains, WG1.static или seed в defaults.
 - name: Проверить наличие файла WireGuard на контроллере Ansible
   ansible.builtin.stat:
     path: "{{ role_path }}/templates/{{ nexus_wireguard_config_file }}"
@@ -56,6 +57,38 @@
     nexus_wireguard_split_tunnel | default(true) | bool
     and not (_nexus_wg_domains_src.stat.exists | default(false) | bool)
   register: _nexus_wg_domains_deploy_seed
+
+- name: Локальный файл статических CIDR на контроллере (опционально)
+  ansible.builtin.stat:
+    path: "{{ role_path }}/templates/{{ nexus_wireguard_static_file }}"
+  delegate_to: localhost
+  become: false
+  register: _nexus_wg_static_src
+  when: nexus_wireguard_split_tunnel | default(true) | bool
+
+- name: Статические CIDR на Nexus — один раз с контроллера (не перезаписывать, если уже есть)
+  ansible.builtin.copy:
+    src: "{{ role_path }}/templates/{{ nexus_wireguard_static_file }}"
+    dest: "/etc/wireguard/{{ nexus_wireguard_interface }}.static"
+    owner: root
+    group: root
+    mode: "0644"
+    force: false
+  when: >-
+    nexus_wireguard_split_tunnel | default(true) | bool
+    and _nexus_wg_static_src.stat.exists | default(false) | bool
+
+- name: Статические CIDR на Nexus — один раз из seed (если нет templates/{{ nexus_wireguard_static_file }})
+  ansible.builtin.copy:
+    dest: "/etc/wireguard/{{ nexus_wireguard_interface }}.static"
+    owner: root
+    group: root
+    mode: "0644"
+    force: false
+    content: "{% if nexus_wireguard_static_seed | default([]) | length > 0 %}{{ nexus_wireguard_static_seed | join('\n') }}\n{% else %}# один CIDR или префикс на строку; строки с # — комментарий\n{% endif %}"
+  when: >-
+    nexus_wireguard_split_tunnel | default(true) | bool
+    and not (_nexus_wg_static_src.stat.exists | default(false) | bool)
 
 - name: Скрипт обновления AllowedIPs по списку доменов
   ansible.builtin.template:

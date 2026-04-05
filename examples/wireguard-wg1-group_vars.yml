@@ -1,8 +1,8 @@
 ---
 # WireGuard: готовый конфиг в role templates/WG1.conf (локально, в .gitignore).
-# Домены на хосте: /etc/wireguard/wg1.domains (опционально начальный templates/WG1.domains или nexus_wireguard_domains_seed).
+# На хосте: wg1.domains и wg1.static (или templates/WG1.* + seed в defaults при первом деплое).
 nexus_wireguard_enable: true
 # nexus_wireguard_interface: wg1
 # nexus_wireguard_config_file: WG1.conf
 # nexus_wireguard_split_tunnel: false   # отключить скрипт/timer и PostUp refresh
-# nexus_wireguard_allowed_ips_static: []
+# nexus_wireguard_static_seed: []
