@@ -1,0 +1,4 @@
+---
+# WireGuard на хосте Nexus: конфиг templates/WG1.conf (локально, в .gitignore).
+# Список доменов для split-tunnel — /etc/wireguard/wg1.domains на хосте (деплой не перезаписывает).
+nexus_wireguard_enable: true

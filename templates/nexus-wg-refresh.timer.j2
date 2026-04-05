@@ -1,0 +1,10 @@
+[Unit]
+Description=Periodic refresh of Nexus WireGuard AllowedIPs (DNS)
+
+[Timer]
+OnBootSec={{ nexus_wireguard_domain_refresh_boot_delay_sec | string }}s
+OnUnitInactiveSec={{ nexus_wireguard_domain_refresh_interval_sec | string }}s
+Unit=nexus-wg-refresh-allowed-ips.service
+
+[Install]
+WantedBy=timers.target

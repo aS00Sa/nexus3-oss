@@ -1,0 +1,185 @@
+---
+# Устанавливает wireguard-tools, копирует ваш конфиг с контроллера на интерфейс wg-quick@<имя>.
+# Конфиг: templates/{{ nexus_wireguard_config_file }}. Список доменов на хосте: /etc/wireguard/<iface>.domains
+# (создаётся один раз; force: false). Опционально templates/{{ nexus_wireguard_domains_file }} или nexus_wireguard_domains_seed.
+- name: Проверить наличие файла WireGuard на контроллере Ansible
+  ansible.builtin.stat:
+    path: "{{ role_path }}/templates/{{ nexus_wireguard_config_file }}"
+  delegate_to: localhost
+  become: false
+  register: _nexus_wg_src
+
+- name: Assert — положите конфиг WireGuard в templates/
+  ansible.builtin.assert:
+    that:
+      - _nexus_wg_src.stat.exists | bool
+      - _nexus_wg_src.stat.isreg | bool
+    fail_msg: >-
+      Нет файла {{ role_path }}/templates/{{ nexus_wireguard_config_file }}.
+      Скопируйте туда готовый wg-quick конфиг (имя задаётся в nexus_wireguard_config_file).
+
+- name: Установить пакет wireguard-tools
+  ansible.builtin.package:
+    name: "{{ nexus_wireguard_packages }}"
+    state: present
+
+- name: Локальный файл доменов на контроллере (опционально, рядом с WG-конфигом)
+  ansible.builtin.stat:
+    path: "{{ role_path }}/templates/{{ nexus_wireguard_domains_file }}"
+  delegate_to: localhost
+  become: false
+  register: _nexus_wg_domains_src
+  when: nexus_wireguard_split_tunnel | default(true) | bool
+
+- name: Список доменов на Nexus — один раз с контроллера (не перезаписывать, если уже есть)
+  ansible.builtin.copy:
+    src: "{{ role_path }}/templates/{{ nexus_wireguard_domains_file }}"
+    dest: "/etc/wireguard/{{ nexus_wireguard_interface }}.domains"
+    owner: root
+    group: root
+    mode: "0644"
+    force: false
+  when: >-
+    nexus_wireguard_split_tunnel | default(true) | bool
+    and _nexus_wg_domains_src.stat.exists | default(false) | bool
+  register: _nexus_wg_domains_deploy_copy
+
+- name: Список доменов на Nexus — один раз из seed (если нет templates/{{ nexus_wireguard_domains_file }})
+  ansible.builtin.copy:
+    dest: "/etc/wireguard/{{ nexus_wireguard_interface }}.domains"
+    owner: root
+    group: root
+    mode: "0644"
+    force: false
+    content: "{% if nexus_wireguard_domains_seed | default([]) | length > 0 %}{{ nexus_wireguard_domains_seed | join('\n') }}\n{% else %}# один домен на строку; строки с # — комментарий\n{% endif %}"
+  when: >-
+    nexus_wireguard_split_tunnel | default(true) | bool
+    and not (_nexus_wg_domains_src.stat.exists | default(false) | bool)
+  register: _nexus_wg_domains_deploy_seed
+
+- name: Скрипт обновления AllowedIPs по списку доменов
+  ansible.builtin.template:
+    src: nexus-wg-refresh-allowed-ips.sh.j2
+    dest: /usr/local/sbin/nexus-wg-refresh-allowed-ips.sh
+    owner: root
+    group: root
+    mode: "0755"
+  when: nexus_wireguard_split_tunnel | default(true) | bool
+  register: _nexus_wg_script_deploy
+
+- name: Удалить скрипт обновления AllowedIPs
+  ansible.builtin.file:
+    path: /usr/local/sbin/nexus-wg-refresh-allowed-ips.sh
+    state: absent
+  when: not (nexus_wireguard_split_tunnel | default(true) | bool)
+
+- name: Развернуть конфиг WireGuard на хост Nexus
+  ansible.builtin.template:
+    src: "{{ nexus_wireguard_config_file }}"
+    dest: "/etc/wireguard/{{ nexus_wireguard_interface }}.conf"
+    owner: root
+    group: root
+    mode: "0600"
+  register: _nexus_wg_conf_deploy
+
+- name: Добавить PostUp для split-tunnel (перед [Peer])
+  ansible.builtin.lineinfile:
+    path: "/etc/wireguard/{{ nexus_wireguard_interface }}.conf"
+    insertbefore: '^\[Peer\]'
+    line: PostUp = /usr/local/sbin/nexus-wg-refresh-allowed-ips.sh
+    create: false
+  when: nexus_wireguard_split_tunnel | default(true) | bool
+  register: _nexus_wg_postup_edit
+
+- name: Каталог drop-in для wg-quick
+  ansible.builtin.file:
+    path: "/etc/systemd/system/wg-quick@{{ nexus_wireguard_interface }}.service.d"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: wg-quick раньше nexus.service
+  ansible.builtin.copy:
+    dest: "/etc/systemd/system/wg-quick@{{ nexus_wireguard_interface }}.service.d/before-nexus.conf"
+    owner: root
+    group: root
+    mode: "0644"
+    content: |
+      [Unit]
+      Before=nexus.service
+  register: _nexus_wg_dropin_deploy
+
+- name: Systemd unit и timer для периодического refresh AllowedIPs
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - { src: nexus-wg-refresh.service.j2, dest: /etc/systemd/system/nexus-wg-refresh-allowed-ips.service }
+    - { src: nexus-wg-refresh.timer.j2, dest: /etc/systemd/system/nexus-wg-refresh-allowed-ips.timer }
+  when: nexus_wireguard_split_tunnel | default(true) | bool
+  register: _nexus_wg_timer_deploy
+
+- name: Отключить timer refresh
+  ansible.builtin.systemd:
+    name: nexus-wg-refresh-allowed-ips.timer
+    enabled: false
+    state: stopped
+    daemon_reload: true
+  when: not (nexus_wireguard_split_tunnel | default(true) | bool)
+  failed_when: false
+
+- name: Удалить unit/timer refresh
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/systemd/system/nexus-wg-refresh-allowed-ips.service
+    - /etc/systemd/system/nexus-wg-refresh-allowed-ips.timer
+  when: not (nexus_wireguard_split_tunnel | default(true) | bool)
+  register: _nexus_wg_timer_removed
+
+- name: systemd daemon-reload
+  ansible.builtin.systemd:
+    daemon_reload: true
+  when: >-
+    (_nexus_wg_dropin_deploy is changed) or
+    (nexus_wireguard_split_tunnel | default(true) | bool and _nexus_wg_timer_deploy is defined and _nexus_wg_timer_deploy is changed) or
+    (_nexus_wg_timer_removed is defined and _nexus_wg_timer_removed is changed)
+
+- name: Включить и перезапустить интерфейс WireGuard
+  ansible.builtin.systemd:
+    name: "wg-quick@{{ nexus_wireguard_interface }}.service"
+    enabled: true
+    state: restarted
+  when: >-
+    (_nexus_wg_conf_deploy is changed) or
+    (_nexus_wg_postup_edit is defined and _nexus_wg_postup_edit is changed) or
+    (_nexus_wg_script_deploy is defined and _nexus_wg_script_deploy is changed) or
+    (_nexus_wg_dropin_deploy is changed) or
+    (nexus_wireguard_split_tunnel | default(true) | bool and _nexus_wg_timer_deploy is defined and _nexus_wg_timer_deploy is changed)
+
+- name: Включить интерфейс WireGuard (без перезапуска)
+  ansible.builtin.systemd:
+    name: "wg-quick@{{ nexus_wireguard_interface }}.service"
+    enabled: true
+    state: started
+  when: >-
+    not (
+      (_nexus_wg_conf_deploy is changed) or
+      (_nexus_wg_postup_edit is defined and _nexus_wg_postup_edit is changed) or
+      (_nexus_wg_script_deploy is defined and _nexus_wg_script_deploy is changed) or
+      (_nexus_wg_dropin_deploy is changed) or
+      (nexus_wireguard_split_tunnel | default(true) | bool and _nexus_wg_timer_deploy is defined and _nexus_wg_timer_deploy is changed)
+    )
+
+- name: Запустить timer refresh AllowedIPs
+  ansible.builtin.systemd:
+    name: nexus-wg-refresh-allowed-ips.timer
+    enabled: true
+    state: started
+    daemon_reload: true
+  when: nexus_wireguard_split_tunnel | default(true) | bool

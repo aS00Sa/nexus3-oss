@@ -1,4 +1,7 @@
 ---
+nexus_wireguard_packages:
+  - wireguard-tools
+
 httpd_package_name: apache2
 httpd_config_dir: /etc/{{ httpd_package_name }}/sites-enabled
 certificate_file_dest: /etc/ssl/certs

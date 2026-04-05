@@ -14,20 +14,33 @@
 - На контроллере: **Python**, зависимости из **`requirements.txt`**, в т.ч. **jmespath** (фильтр `json_query`).
 - **Java 8** (OpenJDK 8 рекомендует Sonatype).
 
+### WireGuard на хосте Nexus (опционально)
+
+При **`nexus_wireguard_enable: true`** роль ставит **`wireguard-tools`**, копирует **ваш готовый wg-quick конфиг** с контроллера в **`/etc/wireguard/{{ nexus_wireguard_interface }}.conf`** и включает **`wg-quick@<interface>`** (до **`nexus.service`**). Это **не** HTTP-прокси в UI Nexus.
+
+1. Положите файл в **`templates/{{ nexus_wireguard_config_file }}`** роли (по умолчанию **`templates/WG1.conf`**). Обычно файл в **`.gitignore`**, в git не коммитится.
+2. При необходимости смените **`nexus_wireguard_interface`** (имя интерфейса и юнита **`wg-quick@…`**).
+
+**Маршрутизация по доменам (split tunnel):** рабочий список лежит **на Nexus** в **`/etc/wireguard/<interface>.domains`** (рядом по смыслу с **`…/wg1.conf`**): **один домен на строку**, строки с **`#`** — комментарии. **Повторный деплой этот файл не перезаписывает** (`force: false`). Скрипт и таймер читают только его (**`getent ahosts`**), **`PublicKey`** пира из **`.conf`**, **`wg set … allowed-ips`**; плюс **`nexus_wireguard_allowed_ips_static`** из Ansible (редко нужно). При **первом** появлении файла на хосте: либо копируется **`templates/{{ nexus_wireguard_domains_file }}`** (по умолчанию **`WG1.domains`**, опционально рядом с **`WG1.conf`**), либо создаётся из **`nexus_wireguard_domains_seed`** в **`defaults/main.yml`** (типичные **npm** / **HashiCorp** / **MongoDB**). Дальше список меняйте **вручную на сервере**. Отключить скрипт и таймер: **`nexus_wireguard_split_tunnel: false`**.
+
+Пакеты: **`wireguard-tools`**. Примеры: **`examples/wireguard-wg1-group_vars.yml`**, формат доменов — **`examples/WG1.domains`**.
+
 ## Пример деплоя (`install.yml`)
 
-Переменные для группы **`[nexus]`** Ansible подхватывает из каталога **`group_vars/nexus/`** (рядом с плейбуком). Префиксы `01-` … `13-` задают порядок слияния файлов.
+Переменные для группы **`[nexus]`** Ansible подхватывает из каталога **`group_vars/nexus/`** (рядом с плейбуком). Префиксы `01-` … `15-` задают порядок слияния файлов.
 
 | Файл | Назначение |
 |------|------------|
 | `01-core.yml` | Версия, архив, пароль админа, hostname, timezone, bearer token |
 | `02-docker-repos.yml` | Docker proxy/hosted/group, cleanup policies |
-| `03-npm-repos.yml` | NPM |
+| `03-npm-repos.yml` | NPM (в т.ч. **registry.npmjs.org** — PM2, @mongodb/*, @hashicorp/*) |
 | `04-apt-ubuntu-…`, `05-06-apt-debian-…`, `06-apt-gitlab-ce-repos.yml`, `07-apt-repos.yml` | APT (агрегатор в `07`) |
 | `08-09-yum-almalinux-…`, `10-yum-repos.yml` | YUM (агрегатор в `10`) |
 | `11-backup.yml` | Еженедельный бэкап БД и blobstore |
 | `12-scheduled-tasks.yml` | Docker GC, compact blobstore |
 | `13-users-rbac.yml` | Пользователи (repo-dev/test/stage/prod, gitlab-ci), роли и привилегии |
+| `14-wireguard-nexus.yml` | WireGuard на хосте Nexus (`templates/WG1.conf`); split — файл **`/etc/wireguard/wg1.domains`** на хосте |
+| `15-raw-vendor-repos.yml` | Raw: HashiCorp releases, MongoDB repo + `raw-all` |
 
 Почему не `defaults/main.yml` роли: там значения по умолчанию для потребителей Galaxy; пример инсталляции удобнее держать отдельно в `group_vars`.
 
@@ -59,7 +72,8 @@ ansible-playbook -i inventory-localdomain.ini install.yml \
 
 - **Maven:** `central`, `jboss`, `private-release`, `public`
 - **Docker:** `docker-proxy`, `docker-hosted`, `docker-group`
-- **NPM:** `npm-proxy`, `npm-hosted`, `npm-group`
+- **NPM:** `npm-proxy`, `npm-hosted`, `npm-group` (PM2 и пр. — тот же **registry.npmjs.org**)
+- **Raw:** `raw-internal`, `ubuntu-archive`, `raw-hashicorp-releases`, `raw-mongodb-org`, `raw-all`
 - **APT:** `apt-ubuntu-24.04-noble`, `apt-ubuntu-24.04-noble-security`, `apt-debian-12-bookworm`, `apt-debian-12-bookworm-security`, `apt-debian-13-trixie`, `apt-debian-13-trixie-updates`, `apt-debian-13-trixie-backports`, `apt-debian-13-trixie-security`, `apt-gitlab-ce-ubuntu-noble`, `apt-gitlab-ce-debian-bookworm`, `apt-gitlab-ce-debian-trixie`
 - **YUM:** `yum-almalinux-9-x86_64-baseos`, `yum-almalinux-9-x86_64-appstream`, `yum-almalinux-10-x86_64-baseos`, `yum-almalinux-10-x86_64-appstream`
 
@@ -95,6 +109,15 @@ ansible-playbook -i inventory-localdomain.ini install.yml \
 | `yum-almalinux-10-x86_64-appstream` | https://repo.almalinux.org/almalinux/10/AppStream/x86_64/os/ |
 
 Каталоги **blob-apt** и **blob-yum** заданы в **`vars/blob_vars.yml`**.
+
+### Raw (`nexus_config_raw: true`, `15-raw-vendor-repos.yml`)
+
+| Репозиторий в Nexus | Upstream |
+|---------------------|----------|
+| `ubuntu-archive` | http://archive.ubuntu.com/ubuntu/ |
+| `raw-hashicorp-releases` | https://releases.hashicorp.com/ (Consul, Vault и др.) |
+| `raw-mongodb-org` | https://repo.mongodb.org/ |
+| `raw-all` | группа: internal + прокси выше |
 
 ### Клиенты: обновление ОС через Nexus (Debian 13 и AlmaLinux 10)
 

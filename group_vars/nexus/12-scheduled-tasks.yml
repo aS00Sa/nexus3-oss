@@ -32,3 +32,8 @@ nexus_scheduled_tasks:
     typeId: blobstore.compact
     taskProperties:
       blobstoreName: blob-yum
+  - name: Compact blobstore blob-raw (weekly Sun 05:15)
+    cron: "0 15 5 ? * SUN"
+    typeId: blobstore.compact
+    taskProperties:
+      blobstoreName: blob-raw

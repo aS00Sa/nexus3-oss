@@ -198,7 +198,31 @@ nexus_proxy_exclude_hosts:
   - "[::1]"
 # Applies to both http and https
 nexus_http_proxy_retries: 2 # in seconds
-nexus_http_proxy_timeout: 20 # in seconds
+nexus_http_proxy_timeout: 20 # seconds
+
+# WireGuard на хосте Nexus: готовый wg-quick конфиг с контроллера → /etc/wireguard/<interface>.conf
+nexus_wireguard_enable: false
+# Имя systemd: wg-quick@<interface>. Имя файла на хосте: /etc/wireguard/<interface>.conf
+nexus_wireguard_interface: wg1
+# Имя файла в каталоге templates/ роли (часто в .gitignore, не коммитить).
+nexus_wireguard_config_file: WG1.conf
+# Рядом с WG1.conf: опциональный начальный список доменов (копируется на хост один раз, пока нет /etc/wireguard/<iface>.domains).
+nexus_wireguard_domains_file: WG1.domains
+# Динамический split-tunnel: скрипт + PostUp + timer читают список только с хоста (/etc/wireguard/<iface>.domains), деплой файл не перезаписывает.
+nexus_wireguard_split_tunnel: true
+# Статические CIDR в скрипте (редко нужны); основной список — файл на хосте.
+nexus_wireguard_allowed_ips_static: []
+# Только начальное наполнение .domains при первом деплое, если нет templates/{{ nexus_wireguard_domains_file }}.
+# Дальше правьте файл на Nexus вручную. npm/PM2, HashiCorp, MongoDB — типичные строки ниже.
+nexus_wireguard_domains_seed:
+  - registry.npmjs.org
+  - releases.hashicorp.com
+  - apt.releases.hashicorp.com
+  - rpm.releases.hashicorp.com
+  - repo.mongodb.org
+  - downloads.mongodb.org
+nexus_wireguard_domain_refresh_interval_sec: 900
+nexus_wireguard_domain_refresh_boot_delay_sec: 120
 
 nexus_config_maven: true
 nexus_config_pypi: false

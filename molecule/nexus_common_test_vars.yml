@@ -3,6 +3,8 @@
 nexus_apply_admin_password: true
 nexus_apply_local_user_passwords: true
 
+nexus_wireguard_enable: false
+
 httpd_setup_enable: true
 httpd_copy_ssl_files: false
 httpd_ssl_cert_file_location: "{{ default_cert }}"

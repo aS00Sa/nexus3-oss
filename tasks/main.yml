@@ -9,6 +9,10 @@
   ansible.builtin.include_tasks: selinux-{{ ansible_os_family }}.yml
   when: ansible_selinux.status is defined and ansible_selinux.status == "enabled"
 
+- name: Configure host WireGuard for Nexus outbound (optional)
+  ansible.builtin.include_tasks: wireguard.yml
+  when: nexus_wireguard_enable | default(false) | bool
+
 - name: Check if SystemD service is installed
   ansible.builtin.stat:
     path: /etc/systemd/system/nexus.service

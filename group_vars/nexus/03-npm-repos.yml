@@ -1,4 +1,5 @@
 ---
+# registry.npmjs.org — общий npmjs: PM2 (pm2), @mongodb/*, @hashicorp/* и остальные пакеты.
 nexus_config_npm: true
 nexus_repos_npm_proxy:
   - name: npm-proxy

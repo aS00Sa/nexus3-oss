@@ -6,7 +6,7 @@
 [![GitHub licence](https://img.shields.io/github/license/ansible-role/nexus3-oss)](https://github.com/aS00Sa/nexus3-oss/blob/main/LICENSE.md)
 # Ansible Role: Nexus 3 OSS
 
-**Русская документация:** [README.ru.md](README.ru.md) (деплой `install.yml`, репозитории APT/YUM, blobstore, расписание, бэкапы).
+**Русская документация:** [README.ru.md](README.ru.md) (деплой `install.yml`, репозитории APT/YUM, blobstore, расписание, бэкапы, опциональный **WireGuard** на хосте для исходящего трафика Nexus).
 
 This role installs and configures Nexus Repository Manager OSS version 3.x.
 
@@ -130,7 +130,7 @@ ansible-playbook -i inventory.ini install.yml -u root \
 --private-key ~/.ssh/id_ed25519 -vvv 2>&1 | tee nexus-$(date +%Y%m%d-%H%M).log
    ```
 
-2. **Репозитории Linux в примере `install.yml`** — переменные для группы `nexus` лежат в **`group_vars/nexus/`** (файлы `01-*.yml` … `13-*.yml`: APT/YUM, Docker, NPM, бэкап, задания, RBAC). APT: агрегатор **`07-apt-repos.yml`**, в т.ч. GitLab CE — **`06-apt-gitlab-ce-repos.yml`**. Итоговые имена репозиториев в Nexus и upstream:
+2. **Репозитории Linux в примере `install.yml`** — переменные для группы `nexus` лежат в **`group_vars/nexus/`** (в т.ч. **`14-wireguard-nexus.yml`**, **`15-raw-vendor-repos.yml`**: WireGuard, raw HashiCorp/MongoDB). APT: **`07-apt-repos.yml`**, GitLab CE — **`06-apt-gitlab-ce-repos.yml`**. Итоговые имена репозиториев в Nexus и upstream:
 
 ### APT (`nexus_config_apt: true`)
 
@@ -157,7 +157,18 @@ ansible-playbook -i inventory.ini install.yml -u root \
 | `yum-almalinux-10-x86_64-baseos` | https://repo.almalinux.org/almalinux/10/BaseOS/x86_64/os/ (AlmaLinux 10 BaseOS x86_64) |
 | `yum-almalinux-10-x86_64-appstream` | https://repo.almalinux.org/almalinux/10/AppStream/x86_64/os/ (AlmaLinux 10 AppStream x86_64) |
 
-Blobstore’ы **blob-apt** и **blob-yum** уже описаны в `vars/blob_vars.yml`, в плейбуке отдельно не задавались.
+### Raw (`nexus_config_raw: true`, `15-raw-vendor-repos.yml`)
+
+| Репозиторий в Nexus | Upstream |
+|---------------------|----------|
+| `ubuntu-archive` | http://archive.ubuntu.com/ubuntu/ |
+| `raw-hashicorp-releases` | https://releases.hashicorp.com/ |
+| `raw-mongodb-org` | https://repo.mongodb.org/ |
+| `raw-all` | группа (internal + прокси выше) |
+
+NPM (**`03-npm-repos.yml`**): **registry.npmjs.org** — в том числе **PM2** и scoped-пакеты (**@mongodb/***, **@hashicorp/***). Подробнее — [**README.ru.md**](README.ru.md).
+
+Blobstore’ы **blob-apt**, **blob-yum**, **blob-raw** — в `vars/blob_vars.yml`.
 
 **Client OS updates via Nexus (Debian 13 trixie, AlmaLinux 10):** примеры **`debian.sources`** / **`auth.conf.d`** и **`.repo`** для локального Nexus по HTTP (**`:8081`**) — в [**README.ru.md**](README.ru.md), раздел *«Клиенты: обновление ОС через Nexus»*.
 
