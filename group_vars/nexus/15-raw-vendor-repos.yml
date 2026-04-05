@@ -1,14 +1,22 @@
 ---
-# Raw proxy: HashiCorp (Consul, Vault и др. zip), репозиторий пакетов MongoDB.
-# npm/PM2 — по-прежнему npm-group (registry.npmjs.org), см. 03-npm-repos.yml.
+# Raw proxy: HashiCorp (бинарники, apt, rpm), MongoDB, Redis (тарболы и пакеты).
+# npm/PM2 — npm-group (registry.npmjs.org), см. 03-npm-repos.yml.
 nexus_config_raw: true
 nexus_repos_raw_proxy:
   - name: ubuntu-archive
     remote_url: http://archive.ubuntu.com/ubuntu/
   - name: raw-hashicorp-releases
     remote_url: https://releases.hashicorp.com/
+  - name: raw-hashicorp-apt
+    remote_url: https://apt.releases.hashicorp.com/
+  - name: raw-hashicorp-rpm
+    remote_url: https://rpm.releases.hashicorp.com/
   - name: raw-mongodb-org
     remote_url: https://repo.mongodb.org/
+  - name: raw-redis-download
+    remote_url: https://download.redis.io/
+  - name: raw-redis-packages
+    remote_url: https://packages.redis.io/
 nexus_repos_raw_hosted:
   - name: raw-internal
     version_policy: release
@@ -19,4 +27,8 @@ nexus_repos_raw_group:
       - raw-internal
       - ubuntu-archive
       - raw-hashicorp-releases
+      - raw-hashicorp-apt
+      - raw-hashicorp-rpm
       - raw-mongodb-org
+      - raw-redis-download
+      - raw-redis-packages

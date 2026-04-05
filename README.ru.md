@@ -75,7 +75,7 @@ ansible-playbook -i inventory-localdomain.ini install.yml --private-key ~/.ssh/i
 - **Maven:** `central`, `jboss`, `private-release`, `public`
 - **Docker:** `docker-proxy`, `docker-hosted`, `docker-group`
 - **NPM:** `npm-proxy`, `npm-hosted`, `npm-group` (PM2 и пр. — тот же **registry.npmjs.org**)
-- **Raw:** `raw-internal`, `ubuntu-archive`, `raw-hashicorp-releases`, `raw-mongodb-org`, `raw-all`
+- **Raw:** `raw-internal`, `ubuntu-archive`, `raw-hashicorp-releases`, `raw-hashicorp-apt`, `raw-hashicorp-rpm`, `raw-mongodb-org`, `raw-redis-download`, `raw-redis-packages`, `raw-all`
 - **APT:** `apt-ubuntu-24.04-noble`, `apt-ubuntu-24.04-noble-security`, `apt-debian-12-bookworm`, `apt-debian-12-bookworm-security`, `apt-debian-13-trixie`, `apt-debian-13-trixie-updates`, `apt-debian-13-trixie-backports`, `apt-debian-13-trixie-security`, `apt-gitlab-ce-ubuntu-noble`, `apt-gitlab-ce-debian-bookworm`, `apt-gitlab-ce-debian-trixie`
 - **YUM:** `yum-almalinux-9-x86_64-baseos`, `yum-almalinux-9-x86_64-appstream`, `yum-almalinux-10-x86_64-baseos`, `yum-almalinux-10-x86_64-appstream`
 
@@ -117,8 +117,12 @@ ansible-playbook -i inventory-localdomain.ini install.yml --private-key ~/.ssh/i
 | Репозиторий в Nexus | Upstream |
 |---------------------|----------|
 | `ubuntu-archive` | http://archive.ubuntu.com/ubuntu/ |
-| `raw-hashicorp-releases` | https://releases.hashicorp.com/ (Consul, Vault и др.) |
+| `raw-hashicorp-releases` | https://releases.hashicorp.com/ |
+| `raw-hashicorp-apt` | https://apt.releases.hashicorp.com/ |
+| `raw-hashicorp-rpm` | https://rpm.releases.hashicorp.com/ |
 | `raw-mongodb-org` | https://repo.mongodb.org/ |
+| `raw-redis-download` | https://download.redis.io/ |
+| `raw-redis-packages` | https://packages.redis.io/ |
 | `raw-all` | группа: internal + прокси выше |
 
 ### Клиенты: обновление ОС через Nexus (Debian 13 и AlmaLinux 10)

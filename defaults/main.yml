@@ -223,6 +223,8 @@ nexus_wireguard_domains_seed:
   - rpm.releases.hashicorp.com
   - repo.mongodb.org
   - downloads.mongodb.org
+  - download.redis.io
+  - packages.redis.io
 nexus_wireguard_domain_refresh_interval_sec: 900
 nexus_wireguard_domain_refresh_boot_delay_sec: 120
 

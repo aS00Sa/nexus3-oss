@@ -163,7 +163,11 @@ ansible-playbook -i inventory.ini install.yml -u root \
 |---------------------|----------|
 | `ubuntu-archive` | http://archive.ubuntu.com/ubuntu/ |
 | `raw-hashicorp-releases` | https://releases.hashicorp.com/ |
+| `raw-hashicorp-apt` | https://apt.releases.hashicorp.com/ |
+| `raw-hashicorp-rpm` | https://rpm.releases.hashicorp.com/ |
 | `raw-mongodb-org` | https://repo.mongodb.org/ |
+| `raw-redis-download` | https://download.redis.io/ |
+| `raw-redis-packages` | https://packages.redis.io/ |
 | `raw-all` | группа (internal + прокси выше) |
 
 NPM (**`03-npm-repos.yml`**): **registry.npmjs.org** — в том числе **PM2** и scoped-пакеты (**@mongodb/***, **@hashicorp/***). Подробнее — [**README.ru.md**](README.ru.md).
