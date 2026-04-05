@@ -11,7 +11,7 @@
 - Актуальный **Ansible** (см. `meta/main.yml`).
 - Поддерживаемая ОС (в CI: Rocky Linux 9, Debian 12 и др.).
 - На **целевом хосте** установлен **rsync** (нужен роли для синхронизации Groovy-скриптов).
-- На контроллере: **Python**, зависимости из **`requirements.txt`**, в т.ч. **jmespath** (фильтр `json_query`).
+- На контроллере: **Python**, зависимости из **`requirements.txt`**, в т.ч. **jmespath** (фильтр `json_query`). Плейбук **`install.yml`** запускайте из **консоли WSL**, не из PowerShell.
 - **Java 8** (OpenJDK 8 рекомендует Sonatype).
 
 ### WireGuard на хосте Nexus (опционально)
@@ -27,7 +27,7 @@
 
 ## Пример деплоя (`install.yml`)
 
-Переменные для группы **`[nexus]`** Ansible подхватывает из каталога **`group_vars/nexus/`** (рядом с плейбуком). Префиксы `01-` … `15-` задают порядок слияния файлов.
+**Деплой по умолчанию — из консоли WSL** (bash в Linux под Windows). Переменные для **`[nexus]`** — в **`group_vars/nexus/`** рядом с плейбуком; префиксы `01-` … `15-` задают порядок слияния файлов.
 
 | Файл | Назначение |
 |------|------------|
@@ -42,19 +42,21 @@
 | `14-wireguard-nexus.yml` | WireGuard на хосте Nexus (`templates/WG1.conf`); split — **`/etc/wireguard/wg1.domains`** и **`wg1.static`** на хосте |
 | `15-raw-vendor-repos.yml` | Raw: HashiCorp releases, MongoDB repo + `raw-all` |
 
-Почему не `defaults/main.yml` роли: там значения по умолчанию для потребителей Galaxy; пример инсталляции удобнее держать отдельно в `group_vars`.
+Почему не `defaults/main.yml` роли: там значения по умолчанию для Galaxy; пример инсталляции — в **`group_vars`**.
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
+cd /mnt/c/Users/<вы>/git/ansible-role-nexus3-oss   # свой путь к клону в WSL
+
+python3 -m venv .venv && source .venv/bin/activate
 pip install -U pip && pip install -r requirements.txt
 
 export ANSIBLE_CONFIG="$PWD/ansible.cfg"
-ansible-playbook -i inventory-localdomain.ini install.yml \
-  --private-key ~/.ssh/id_rsa -v
+ansible-playbook -i inventory-localdomain.ini install.yml --private-key ~/.ssh/id_rsa -v
 ```
 
-Подставьте свой инвентарь и ключ. Для WSL путь к репозиторию: `/mnt/c/.../ansible-role-nexus3-oss`.
+Инвентарь и **`ansible_user`** — свои. Ключ в **`--private-key`** должен быть в **`authorized_keys`** на хосте (при необходимости **`~/.ssh/id_ed25519`**). WireGuard: **`templates/WG1.conf`**, при необходимости **`WG1.domains`**, **`WG1.static`**.
+
+Если Ansible пишет, что игнорирует **`ansible.cfg`** из‑за прав на каталог **`/mnt/c/...`**: выполните **`cd ~`**, затем **`export ANSIBLE_CONFIG=/полный/путь/к/ansible-role-nexus3-oss/ansible.cfg`** и укажите полные пути к **`install.yml`** и к **`-i …`**. Смена ключа хоста: **`ssh-keygen -f ~/.ssh/known_hosts -R <IP>`**.
 
 ## Локальные пользователи Nexus (`13-users-rbac.yml`)
 

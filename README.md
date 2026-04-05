@@ -115,7 +115,7 @@ of new features if needed (and update meta/main.yml for minimum version)
 
 (see [Dependencies](#dependencies) section below for matching roles on galaxy)
 
-1. **Перед запуском деплоя** — виртуальное окружение и зависимости:
+1. **Перед запуском деплоя** — виртуальное окружение и зависимости. На Windows запускайте эти команды **из WSL** (Linux), а не из PowerShell — см. пошагово [**README.ru.md**](README.ru.md) (раздел «Пример деплоя»).
 
    ```bash
    python3 -m venv .venv
