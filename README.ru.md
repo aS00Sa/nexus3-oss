@@ -23,7 +23,7 @@
 | `01-core.yml` | Версия, архив, пароль админа, hostname, timezone, bearer token |
 | `02-docker-repos.yml` | Docker proxy/hosted/group, cleanup policies |
 | `03-npm-repos.yml` | NPM |
-| `04-apt-ubuntu-…`, `05-06-apt-debian-…`, `07-apt-repos.yml` | APT (агрегатор в `07`) |
+| `04-apt-ubuntu-…`, `05-06-apt-debian-…`, `06-apt-gitlab-ce-repos.yml`, `07-apt-repos.yml` | APT (агрегатор в `07`) |
 | `08-09-yum-almalinux-…`, `10-yum-repos.yml` | YUM (агрегатор в `10`) |
 | `11-backup.yml` | Еженедельный бэкап БД и blobstore |
 | `12-scheduled-tasks.yml` | Docker GC, compact blobstore |
@@ -60,7 +60,7 @@ ansible-playbook -i inventory-localdomain.ini install.yml \
 - **Maven:** `central`, `jboss`, `private-release`, `public`
 - **Docker:** `docker-proxy`, `docker-hosted`, `docker-group`
 - **NPM:** `npm-proxy`, `npm-hosted`, `npm-group`
-- **APT:** `apt-ubuntu-24.04-noble`, `apt-ubuntu-24.04-noble-security`, `apt-debian-12-bookworm`, `apt-debian-12-bookworm-security`, `apt-debian-13-trixie`, `apt-debian-13-trixie-updates`, `apt-debian-13-trixie-backports`, `apt-debian-13-trixie-security`
+- **APT:** `apt-ubuntu-24.04-noble`, `apt-ubuntu-24.04-noble-security`, `apt-debian-12-bookworm`, `apt-debian-12-bookworm-security`, `apt-debian-13-trixie`, `apt-debian-13-trixie-updates`, `apt-debian-13-trixie-backports`, `apt-debian-13-trixie-security`, `apt-gitlab-ce-ubuntu-noble`, `apt-gitlab-ce-debian-bookworm`, `apt-gitlab-ce-debian-trixie`
 - **YUM:** `yum-almalinux-9-x86_64-baseos`, `yum-almalinux-9-x86_64-appstream`, `yum-almalinux-10-x86_64-baseos`, `yum-almalinux-10-x86_64-appstream`
 
 Та же сводка продублирована комментарием в начале **`group_vars/nexus/13-users-rbac.yml`**.
@@ -79,6 +79,11 @@ ansible-playbook -i inventory-localdomain.ini install.yml \
 | `apt-debian-13-trixie-updates` | https://deb.debian.org/debian | trixie-updates (Debian 13) |
 | `apt-debian-13-trixie-backports` | https://deb.debian.org/debian | trixie-backports (Debian 13) |
 | `apt-debian-13-trixie-security` | https://deb.debian.org/debian-security | trixie-security (Debian 13) |
+| `apt-gitlab-ce-ubuntu-noble` | https://packages.gitlab.com/gitlab/gitlab-ce/ubuntu | noble — GitLab CE (Ubuntu 24.04) |
+| `apt-gitlab-ce-debian-bookworm` | https://packages.gitlab.com/gitlab/gitlab-ce/debian | bookworm — GitLab CE (Debian 12) |
+| `apt-gitlab-ce-debian-trixie` | https://packages.gitlab.com/gitlab/gitlab-ce/debian | trixie — GitLab CE (Debian 13) |
+
+На клиенте для GitLab CE установите [ключ подписи](https://packages.gitlab.com/gpgkey/gpg.key) и **`Signed-By`** в `sources`, как в официальном `config_file.list` из [script.deb.sh](https://packages.gitlab.com/install/repositories/gitlab/gitlab-ce/script.deb.sh).
 
 ### YUM (`nexus_config_yum: true`)
 

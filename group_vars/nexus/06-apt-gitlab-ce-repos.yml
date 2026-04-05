@@ -1,0 +1,18 @@
+---
+# GitLab CE (packages.gitlab.com): отдельный APT proxy на каждую ОС/suite из примера 04–06.
+# Upstream: https://packages.gitlab.com/install/repositories/gitlab/gitlab-ce/ (script.deb.sh).
+# На клиенте добавьте ключ: curl -fsSL https://packages.gitlab.com/gpgkey/gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/gitlab_gitlab-ce-archive-keyring.gpg
+# и Signed-By в sources (как в официальном config_file.list).
+nexus_apt_proxy_gitlab_ce:
+  - name: apt-gitlab-ce-ubuntu-noble
+    remote_url: https://packages.gitlab.com/gitlab/gitlab-ce/ubuntu
+    distribution: noble
+    flat: false
+  - name: apt-gitlab-ce-debian-bookworm
+    remote_url: https://packages.gitlab.com/gitlab/gitlab-ce/debian
+    distribution: bookworm
+    flat: false
+  - name: apt-gitlab-ce-debian-trixie
+    remote_url: https://packages.gitlab.com/gitlab/gitlab-ce/debian
+    distribution: trixie
+    flat: false

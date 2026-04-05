@@ -130,7 +130,7 @@ ansible-playbook -i inventory.ini install.yml -u root \
 --private-key ~/.ssh/id_ed25519 -vvv 2>&1 | tee nexus-$(date +%Y%m%d-%H%M).log
    ```
 
-2. **Репозитории Linux в примере `install.yml`** — переменные для группы `nexus` лежат в **`group_vars/nexus/`** (файлы `01-*.yml` … `13-*.yml`: APT/YUM, Docker, NPM, бэкап, задания, RBAC). Итоговые имена репозиториев в Nexus и upstream:
+2. **Репозитории Linux в примере `install.yml`** — переменные для группы `nexus` лежат в **`group_vars/nexus/`** (файлы `01-*.yml` … `13-*.yml`: APT/YUM, Docker, NPM, бэкап, задания, RBAC). APT: агрегатор **`07-apt-repos.yml`**, в т.ч. GitLab CE — **`06-apt-gitlab-ce-repos.yml`**. Итоговые имена репозиториев в Nexus и upstream:
 
 ### APT (`nexus_config_apt: true`)
 
@@ -144,6 +144,9 @@ ansible-playbook -i inventory.ini install.yml -u root \
 | `apt-debian-13-trixie-updates` | https://deb.debian.org/debian | trixie-updates (Debian 13) |
 | `apt-debian-13-trixie-backports` | https://deb.debian.org/debian | trixie-backports (Debian 13) |
 | `apt-debian-13-trixie-security` | https://deb.debian.org/debian-security | trixie-security (Debian 13) |
+| `apt-gitlab-ce-ubuntu-noble` | https://packages.gitlab.com/gitlab/gitlab-ce/ubuntu | noble — GitLab CE (Ubuntu 24.04) |
+| `apt-gitlab-ce-debian-bookworm` | https://packages.gitlab.com/gitlab/gitlab-ce/debian | bookworm — GitLab CE (Debian 12) |
+| `apt-gitlab-ce-debian-trixie` | https://packages.gitlab.com/gitlab/gitlab-ce/debian | trixie — GitLab CE (Debian 13) |
 
 ### YUM (`nexus_config_yum: true`)
 
