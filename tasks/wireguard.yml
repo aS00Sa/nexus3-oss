@@ -24,6 +24,14 @@
     name: "{{ nexus_wireguard_packages }}"
     state: present
 
+- name: Python 3 для скрипта on-demand WireGuard
+  ansible.builtin.package:
+    name: "{{ nexus_wireguard_ondemand_python_pkg }}"
+    state: present
+  when: >-
+    nexus_wireguard_split_tunnel | default(true) | bool
+    and nexus_wireguard_ondemand | default(false) | bool
+
 - name: Локальный файл доменов на контроллере (опционально, рядом с WG-конфигом)
   ansible.builtin.stat:
     path: "{{ role_path }}/templates/{{ nexus_wireguard_domains_file }}"
@@ -156,6 +164,61 @@
   when: nexus_wireguard_split_tunnel | default(true) | bool
   register: _nexus_wg_timer_deploy
 
+- name: Скрипт on-demand WireGuard (поднятие по трафику к .domains / .static)
+  ansible.builtin.template:
+    src: nexus-wg-ondemand.sh.j2
+    dest: /usr/local/sbin/nexus-wg-ondemand.sh
+    owner: root
+    group: root
+    mode: "0755"
+  when: >-
+    nexus_wireguard_split_tunnel | default(true) | bool
+    and nexus_wireguard_ondemand | default(false) | bool
+  register: _nexus_wg_ondemand_script
+
+- name: Systemd unit и timer on-demand WireGuard
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - { src: nexus-wg-ondemand.service.j2, dest: /etc/systemd/system/nexus-wg-ondemand.service }
+    - { src: nexus-wg-ondemand.timer.j2, dest: /etc/systemd/system/nexus-wg-ondemand.timer }
+  when: >-
+    nexus_wireguard_split_tunnel | default(true) | bool
+    and nexus_wireguard_ondemand | default(false) | bool
+  register: _nexus_wg_ondemand_units
+
+- name: Удалить on-demand WireGuard
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /usr/local/sbin/nexus-wg-ondemand.sh
+    - /etc/systemd/system/nexus-wg-ondemand.service
+    - /etc/systemd/system/nexus-wg-ondemand.timer
+  when: >-
+    not (
+      nexus_wireguard_split_tunnel | default(true) | bool
+      and nexus_wireguard_ondemand | default(false) | bool
+    )
+  register: _nexus_wg_ondemand_removed
+
+- name: Отключить timer on-demand WireGuard
+  ansible.builtin.systemd:
+    name: nexus-wg-ondemand.timer
+    enabled: false
+    state: stopped
+    daemon_reload: true
+  when: >-
+    not (
+      nexus_wireguard_split_tunnel | default(true) | bool
+      and nexus_wireguard_ondemand | default(false) | bool
+    )
+  failed_when: false
+
 - name: Отключить timer refresh
   ansible.builtin.systemd:
     name: nexus-wg-refresh-allowed-ips.timer
@@ -181,33 +244,49 @@
   when: >-
     (_nexus_wg_dropin_deploy is changed) or
     (nexus_wireguard_split_tunnel | default(true) | bool and _nexus_wg_timer_deploy is defined and _nexus_wg_timer_deploy is changed) or
-    (_nexus_wg_timer_removed is defined and _nexus_wg_timer_removed is changed)
+    (_nexus_wg_timer_removed is defined and _nexus_wg_timer_removed is changed) or
+    (_nexus_wg_ondemand_script is defined and _nexus_wg_ondemand_script is changed) or
+    (_nexus_wg_ondemand_units is defined and _nexus_wg_ondemand_units is changed) or
+    (_nexus_wg_ondemand_removed is defined and _nexus_wg_ondemand_removed is changed)
 
-- name: Включить и перезапустить интерфейс WireGuard
+- name: Включить и перезапустить WireGuard (always-on)
   ansible.builtin.systemd:
     name: "wg-quick@{{ nexus_wireguard_interface }}.service"
     enabled: true
     state: restarted
   when: >-
-    (_nexus_wg_conf_deploy is changed) or
-    (_nexus_wg_postup_edit is defined and _nexus_wg_postup_edit is changed) or
-    (_nexus_wg_script_deploy is defined and _nexus_wg_script_deploy is changed) or
-    (_nexus_wg_dropin_deploy is changed) or
-    (nexus_wireguard_split_tunnel | default(true) | bool and _nexus_wg_timer_deploy is defined and _nexus_wg_timer_deploy is changed)
-
-- name: Включить интерфейс WireGuard (без перезапуска)
-  ansible.builtin.systemd:
-    name: "wg-quick@{{ nexus_wireguard_interface }}.service"
-    enabled: true
-    state: started
-  when: >-
-    not (
+    not (nexus_wireguard_ondemand | default(false) | bool)
+    and (
       (_nexus_wg_conf_deploy is changed) or
       (_nexus_wg_postup_edit is defined and _nexus_wg_postup_edit is changed) or
       (_nexus_wg_script_deploy is defined and _nexus_wg_script_deploy is changed) or
       (_nexus_wg_dropin_deploy is changed) or
       (nexus_wireguard_split_tunnel | default(true) | bool and _nexus_wg_timer_deploy is defined and _nexus_wg_timer_deploy is changed)
     )
+
+- name: Включить WireGuard без перезапуска (always-on)
+  ansible.builtin.systemd:
+    name: "wg-quick@{{ nexus_wireguard_interface }}.service"
+    enabled: true
+    state: started
+  when: >-
+    not (nexus_wireguard_ondemand | default(false) | bool)
+    and not (
+      (_nexus_wg_conf_deploy is changed) or
+      (_nexus_wg_postup_edit is defined and _nexus_wg_postup_edit is changed) or
+      (_nexus_wg_script_deploy is defined and _nexus_wg_script_deploy is changed) or
+      (_nexus_wg_dropin_deploy is changed) or
+      (nexus_wireguard_split_tunnel | default(true) | bool and _nexus_wg_timer_deploy is defined and _nexus_wg_timer_deploy is changed)
+    )
+
+- name: WireGuard on-demand — не автозапуск, интерфейс выключен после деплоя
+  ansible.builtin.systemd:
+    name: "wg-quick@{{ nexus_wireguard_interface }}.service"
+    enabled: false
+    state: stopped
+  when: >-
+    nexus_wireguard_ondemand | default(false) | bool
+    and nexus_wireguard_split_tunnel | default(true) | bool
 
 - name: Запустить timer refresh AllowedIPs
   ansible.builtin.systemd:
@@ -216,3 +295,13 @@
     state: started
     daemon_reload: true
   when: nexus_wireguard_split_tunnel | default(true) | bool
+
+- name: Запустить timer on-demand WireGuard
+  ansible.builtin.systemd:
+    name: nexus-wg-ondemand.timer
+    enabled: true
+    state: started
+    daemon_reload: true
+  when: >-
+    nexus_wireguard_split_tunnel | default(true) | bool
+    and nexus_wireguard_ondemand | default(false) | bool

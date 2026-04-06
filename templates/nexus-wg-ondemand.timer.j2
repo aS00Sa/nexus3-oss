@@ -1,0 +1,10 @@
+[Unit]
+Description=Poll for Nexus WireGuard on-demand bring-up
+
+[Timer]
+OnBootSec=45s
+OnUnitActiveSec={{ nexus_wireguard_ondemand_poll_sec | string }}s
+Unit=nexus-wg-ondemand.service
+
+[Install]
+WantedBy=timers.target

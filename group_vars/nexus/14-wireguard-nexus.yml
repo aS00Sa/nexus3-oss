@@ -1,4 +1,6 @@
 ---
 # WireGuard на хосте Nexus: конфиг templates/WG1.conf (локально, в .gitignore).
 # Split-tunnel: /etc/wireguard/wg1.domains и wg1.static на хосте (деплой не перезаписывает).
+# On-demand: wg1 обычно выключен; поднимается при исходящем трафике к хостам из .domains / .static (таймер nexus-wg-ondemand.timer).
 nexus_wireguard_enable: true
+nexus_wireguard_ondemand: true

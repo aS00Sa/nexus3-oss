@@ -1,8 +1,9 @@
 [Unit]
 Description=Refresh WireGuard AllowedIPs for Nexus (domain list)
-After=network-online.target wg-quick@{{ nexus_wireguard_interface }}.service
+After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=oneshot
+ExecCondition=/usr/bin/systemctl is-active wg-quick@{{ nexus_wireguard_interface }}.service --quiet
 ExecStart=/usr/local/sbin/nexus-wg-refresh-allowed-ips.sh

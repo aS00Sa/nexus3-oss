@@ -212,6 +212,12 @@ nexus_wireguard_domains_file: WG1.domains
 nexus_wireguard_static_file: WG1.static
 # Динамический split-tunnel: скрипт + PostUp + timer читают домены и статику только с хоста (.domains / .static).
 nexus_wireguard_split_tunnel: true
+# true: wg-quick не в автозапуске, интерфейс поднимается при исходящем трафике к хостам из .domains / .static и гаснет после простоя.
+nexus_wireguard_ondemand: false
+nexus_wireguard_ondemand_poll_sec: 15
+nexus_wireguard_ondemand_idle_sec: 300
+# Для скрипта on-demand (проверка CIDR в .static): Debian/Ubuntu/RHEL — пакет python3.
+nexus_wireguard_ondemand_python_pkg: python3
 # Начальное наполнение .static при первом деплое, если нет templates/{{ nexus_wireguard_static_file }}; дальше правка на Nexus.
 nexus_wireguard_static_seed: []
 # Только начальное наполнение .domains при первом деплое, если нет templates/{{ nexus_wireguard_domains_file }}.

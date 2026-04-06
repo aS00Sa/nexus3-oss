@@ -1,0 +1,122 @@
+#!/bin/bash
+# Поднять wg-quick@{{ nexus_wireguard_interface }} при исходящем трафике к хостам из .domains / .static; выключить после простоя.
+set -euo pipefail
+IFACE="{{ nexus_wireguard_interface }}"
+DOMAINS_FILE="/etc/wireguard/${IFACE}.domains"
+STATIC_FILE="/etc/wireguard/${IFACE}.static"
+STATE=/run/nexus-wg-ondemand.state
+IDLE_SEC={{ nexus_wireguard_ondemand_idle_sec | int }}
+WG_UNIT="wg-quick@${IFACE}.service"
+NOW=$(date +%s)
+
+read_last_match() {
+  if [[ -f "$STATE" ]]; then
+    grep -E '^LAST_MATCH=[0-9]+$' "$STATE" 2>/dev/null | tail -1 | cut -d= -f2 || true
+  fi
+}
+LAST_MATCH=$(read_last_match)
+[[ -z "${LAST_MATCH:-}" ]] && LAST_MATCH=0
+
+collect_resolved_ips() {
+  [[ -f "$DOMAINS_FILE" ]] || return 0
+  while IFS= read -r line || [[ -n "$line" ]]; do
+    [[ "$line" =~ ^[[:space:]]*# ]] && continue
+    d="$(printf '%s' "$line" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+    [[ -z "$d" ]] && continue
+    getent ahosts "$d" 2>/dev/null | awk '{print $1}' | sort -u
+  done < "$DOMAINS_FILE"
+}
+
+mapfile -t RESOLVED < <(collect_resolved_ips | sort -u)
+
+peer_to_ip() {
+  python3 -c "
+import re, sys
+s = sys.argv[1].strip()
+if not s:
+    sys.exit(1)
+m = re.match(r'^\[([0-9a-fA-F:.]+)\]:(\d+)$', s)
+if m:
+    print(m.group(1))
+    sys.exit(0)
+# host:port (IPv4)
+if s.count(':') == 1:
+    print(s.split(':', 1)[0])
+    sys.exit(0)
+# IPv6 без скобок (редко)
+if ':' in s:
+    print(s.rsplit(':', 1)[0])
+    sys.exit(0)
+print(s)
+sys.exit(0)
+" "$1" 2>/dev/null
+}
+
+ip_in_static() {
+  STATIC_FILE="$STATIC_FILE" IP="$1" python3 - <<'PY' || return 1
+import ipaddress, os, sys
+path = os.environ.get("STATIC_FILE", "")
+ip_s = os.environ.get("IP", "")
+if not path or not os.path.isfile(path):
+    sys.exit(1)
+try:
+    ip_obj = ipaddress.ip_address(ip_s)
+except ValueError:
+    sys.exit(1)
+with open(path) as f:
+    for line in f:
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        try:
+            if "/" in line:
+                if ip_obj in ipaddress.ip_network(line, strict=False):
+                    sys.exit(0)
+            else:
+                if ip_obj == ipaddress.ip_address(line):
+                    sys.exit(0)
+        except ValueError:
+            continue
+sys.exit(1)
+PY
+}
+
+dst_matches() {
+  local ip="$1" tip
+  for tip in "${RESOLVED[@]:-}"; do
+    [[ "$tip" == "$ip" ]] && return 0
+  done
+  [[ -f "$STATIC_FILE" ]] && ip_in_static "$ip" && return 0
+  return 1
+}
+
+MATCH=0
+while read -r peer; do
+  [[ -z "$peer" ]] && continue
+  ip="$(peer_to_ip "$peer" || true)"
+  [[ -z "$ip" ]] && continue
+  if dst_matches "$ip"; then
+    MATCH=1
+    break
+  fi
+done < <(ss -Htn 2>/dev/null | awk '$1 ~ /^(ESTAB|SYN-SENT|SYN-RECV|CLOSE-WAIT|FIN-WAIT-1|FIN-WAIT-2)$/ {print $5}')
+
+install -d -m 755 /run
+if [[ "$MATCH" -eq 1 ]]; then
+  echo "LAST_MATCH=${NOW}" > "${STATE}.new"
+  mv "${STATE}.new" "$STATE"
+  if ! systemctl -q is-active "$WG_UNIT"; then
+    systemctl start "$WG_UNIT"
+    if [[ -x /usr/local/sbin/nexus-wg-refresh-allowed-ips.sh ]]; then
+      /usr/local/sbin/nexus-wg-refresh-allowed-ips.sh || true
+    fi
+  fi
+else
+  if systemctl -q is-active "$WG_UNIT"; then
+    if [[ "$LAST_MATCH" -gt 0 && $((NOW - LAST_MATCH)) -ge "$IDLE_SEC" ]]; then
+      systemctl stop "$WG_UNIT"
+      echo "LAST_MATCH=0" > "${STATE}.new"
+      mv "${STATE}.new" "$STATE"
+    fi
+  fi
+fi

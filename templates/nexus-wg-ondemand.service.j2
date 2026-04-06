@@ -1,0 +1,8 @@
+[Unit]
+Description=WireGuard {{ nexus_wireguard_interface }} on-demand (traffic to .domains / .static)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/nexus-wg-ondemand.sh

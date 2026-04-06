@@ -5,4 +5,7 @@ nexus_wireguard_enable: true
 # nexus_wireguard_interface: wg1
 # nexus_wireguard_config_file: WG1.conf
 # nexus_wireguard_split_tunnel: false   # отключить скрипт/timer и PostUp refresh
+# nexus_wireguard_ondemand: true        # wg по трафику к .domains / .static; false — всегда поднят (autostart)
+# nexus_wireguard_ondemand_poll_sec: 15
+# nexus_wireguard_ondemand_idle_sec: 300
 # nexus_wireguard_static_seed: []
