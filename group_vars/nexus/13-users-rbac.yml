@@ -219,6 +219,15 @@ nexus_local_users:
       - repo-readers
       - ci-publisher
 
+  - username: "{{ repo_parsers_nexus_username }}"
+    first_name: Repo
+    last_name: Parsers
+    email: "{{ repo_parsers_nexus_email }}"
+    password: "{{ repo_parsers_nexus_password }}"
+    roles:
+      - repo-readers
+      - ci-publisher
+
   - username: "{{ deploy_dev_nexus_username }}"
     first_name: Deploy
     last_name: Dev
