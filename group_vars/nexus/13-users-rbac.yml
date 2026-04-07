@@ -69,6 +69,11 @@ repo_parsers_nexus_username: "repo-parsers"
 repo_parsers_nexus_password: "CHANGE_ME"
 repo_parsers_nexus_email: "repo-parsers@example.local"
 
+# --- deploy-dev (CI user, аналогично gitlab-ci)
+deploy_dev_nexus_username: "deploy-dev"
+deploy_dev_nexus_password: "CHANGE_ME"
+deploy_dev_nexus_email: "deploy-dev@example.local"
+
 # --- gitlab-ci
 gitlab_ci_nexus_username: "gitlab-ci"
 gitlab_ci_nexus_password: "CHANGE_ME"
@@ -210,6 +215,15 @@ nexus_local_users:
     last_name: Game
     email: "{{ repo_game_nexus_email }}"
     password: "{{ repo_game_nexus_password }}"
+    roles:
+      - repo-readers
+      - ci-publisher
+
+  - username: "{{ deploy_dev_nexus_username }}"
+    first_name: Deploy
+    last_name: Dev
+    email: "{{ deploy_dev_nexus_email }}"
+    password: "{{ deploy_dev_nexus_password }}"
     roles:
       - repo-readers
       - ci-publisher
