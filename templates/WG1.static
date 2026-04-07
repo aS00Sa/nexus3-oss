@@ -1,0 +1,3 @@
+# Статические CIDR/prefix для AllowedIPs (один на строку). Правка на хосте: /etc/wireguard/wg1.static
+# Пример:
+# 10.0.0.0/24

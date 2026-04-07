@@ -1,0 +1,9 @@
+# См. examples/WG1.domains; при первом деплое копируется на хост, дальше правка на Nexus.
+registry.npmjs.org
+releases.hashicorp.com
+apt.releases.hashicorp.com
+rpm.releases.hashicorp.com
+repo.mongodb.org
+downloads.mongodb.org
+download.redis.io
+packages.redis.io
