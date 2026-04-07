@@ -35,3 +35,6 @@ templates/WG1.domains
 templates/WG1.static
 # Опционально: локальные overrides
 group_vars/nexus/00-wireguard.yml
+
+# Local secrets (DO NOT COMMIT)
+group_vars/nexus/99-secrets.local.yml

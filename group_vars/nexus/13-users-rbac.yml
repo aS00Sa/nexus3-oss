@@ -6,13 +6,14 @@
 # ---------------------------------------------------------------------------
 # Сводная таблица (логин = значение username; пароль = переменная для Vault)
 # ---------------------------------------------------------------------------
-# | Логин (username var)          | Пароль (var)                  | Роли                         | Репозитории / доступ |
-# |-------------------------------|-------------------------------|------------------------------|----------------------|
-# | {{ repo_dev_nexus_username }} | {{ repo_dev_nexus_password }} | repo-readers                 | Все ниже — read/browse; запись нет |
-# | {{ repo_test_nexus_username }}| {{ repo_test_nexus_password }}| repo-readers                 | то же |
-# | {{ repo_stage_nexus_username }}| {{ repo_stage_nexus_password }}| repo-readers               | то же |
-# | {{ repo_prod_nexus_username }}| {{ repo_prod_nexus_password }}| repo-readers                 | то же |
-# | {{ gitlab_ci_nexus_username }}| {{ gitlab_ci_nexus_password }}| repo-readers, ci-publisher   | Все — read/browse; ЗАПИСЬ: docker-hosted, npm-hosted, private-release |
+# | Логин (username var)              | Пароль (var)                     | Роли                          | Доступ |
+# |-----------------------------------|----------------------------------|-------------------------------|--------|
+# | {{ repo_read_all_nexus_username }} | {{ repo_read_all_nexus_password }} | repo-readers                | Только pull/browse по всем репозиториям (+ docker login) |
+# | {{ repo_dev_nexus_username }}     | {{ repo_dev_nexus_password }}    | repo-readers, ci-publisher    | Как выше + push в docker-hosted (и npm/maven hosted по ci-publisher) |
+# | {{ repo_test_nexus_username }}    | {{ repo_test_nexus_password }}   | repo-readers, ci-publisher    | то же |
+# | {{ repo_preprod_nexus_username }} | {{ repo_preprod_nexus_password }}| repo-readers, ci-publisher    | то же |
+# | {{ repo_prod_nexus_username }}    | {{ repo_prod_nexus_password }}   | repo-readers                  | Только чтение (при необходимости смените роли) |
+# | {{ gitlab_ci_nexus_username }}    | {{ gitlab_ci_nexus_password }}   | repo-readers, ci-publisher    | Как repo-dev/test/preprod |
 # ---------------------------------------------------------------------------
 #
 # Репозитории в примере group_vars (имена в Nexus), для repo-readers — pull/browse (+ docker login):
@@ -33,7 +34,12 @@
 #   ci-publisher — add/edit/read/browse на docker-hosted, npm-hosted, private-release (дополнительно к чтению).
 # ---------------------------------------------------------------------------
 
-# --- repo-dev
+# --- Только чтение всех репозиториев (без push в hosted)
+repo_read_all_nexus_username: "repo-read-all"
+repo_read_all_nexus_password: "CHANGE_ME"
+repo_read_all_nexus_email: "repo-read-all@example.local"
+
+# --- repo-dev (push в docker-hosted + чтение всего)
 repo_dev_nexus_username: "repo-dev"
 repo_dev_nexus_password: "CHANGE_ME"
 repo_dev_nexus_email: "repo-dev@example.local"
@@ -43,15 +49,25 @@ repo_test_nexus_username: "repo-test"
 repo_test_nexus_password: "CHANGE_ME"
 repo_test_nexus_email: "repo-test@example.local"
 
-# --- repo-stage
-repo_stage_nexus_username: "repo-stage"
-repo_stage_nexus_password: "CHANGE_ME"
-repo_stage_nexus_email: "repo-stage@example.local"
+# --- repo-preprod
+repo_preprod_nexus_username: "repo-preprod"
+repo_preprod_nexus_password: "CHANGE_ME"
+repo_preprod_nexus_email: "repo-preprod@example.local"
 
-# --- repo-prod
+# --- repo-prod (по умолчанию только чтение)
 repo_prod_nexus_username: "repo-prod"
 repo_prod_nexus_password: "CHANGE_ME"
 repo_prod_nexus_email: "repo-prod@example.local"
+
+# --- repo-game
+repo_game_nexus_username: "repo-game"
+repo_game_nexus_password: "CHANGE_ME"
+repo_game_nexus_email: "repo-game@example.local"
+
+# --- repo-parsers
+repo_parsers_nexus_username: "repo-parsers"
+repo_parsers_nexus_password: "CHANGE_ME"
+repo_parsers_nexus_email: "repo-parsers@example.local"
 
 # --- gitlab-ci
 gitlab_ci_nexus_username: "gitlab-ci"
@@ -145,6 +161,14 @@ nexus_roles:
     roles: []
 
 nexus_local_users:
+  - username: "{{ repo_read_all_nexus_username }}"
+    first_name: Registry
+    last_name: ReadAll
+    email: "{{ repo_read_all_nexus_email }}"
+    password: "{{ repo_read_all_nexus_password }}"
+    roles:
+      - repo-readers
+
   - username: "{{ repo_dev_nexus_username }}"
     first_name: Repo
     last_name: Dev
@@ -152,6 +176,7 @@ nexus_local_users:
     password: "{{ repo_dev_nexus_password }}"
     roles:
       - repo-readers
+      - ci-publisher
 
   - username: "{{ repo_test_nexus_username }}"
     first_name: Repo
@@ -160,14 +185,16 @@ nexus_local_users:
     password: "{{ repo_test_nexus_password }}"
     roles:
       - repo-readers
+      - ci-publisher
 
-  - username: "{{ repo_stage_nexus_username }}"
+  - username: "{{ repo_preprod_nexus_username }}"
     first_name: Repo
-    last_name: Stage
-    email: "{{ repo_stage_nexus_email }}"
-    password: "{{ repo_stage_nexus_password }}"
+    last_name: Preprod
+    email: "{{ repo_preprod_nexus_email }}"
+    password: "{{ repo_preprod_nexus_password }}"
     roles:
       - repo-readers
+      - ci-publisher
 
   - username: "{{ repo_prod_nexus_username }}"
     first_name: Repo
@@ -176,6 +203,16 @@ nexus_local_users:
     password: "{{ repo_prod_nexus_password }}"
     roles:
       - repo-readers
+      - ci-publisher
+
+  - username: "{{ repo_game_nexus_username }}"
+    first_name: Repo
+    last_name: Game
+    email: "{{ repo_game_nexus_email }}"
+    password: "{{ repo_game_nexus_password }}"
+    roles:
+      - repo-readers
+      - ci-publisher
 
   - username: "{{ gitlab_ci_nexus_username }}"
     first_name: GitLab
