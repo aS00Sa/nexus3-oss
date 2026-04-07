@@ -77,10 +77,10 @@ gitlab_ci_nexus_email: "gitlab-ci@example.local"
 nexus_content_selectors:
   - name: docker-login
     description: Selector for docker login privilege
-    search_expression: format == "docker" and path=~"/v2/"
+    search_expression: format == "docker" and path=~"^/v2/.*$"
   - name: docker-hosted-all
     description: All docker paths within docker-hosted
-    search_expression: format == "docker" and path=~"/v2/"
+    search_expression: format == "docker" and path=~"^/v2/.*$"
 
 nexus_privileges:
   - name: wildcard-all-repos-read
