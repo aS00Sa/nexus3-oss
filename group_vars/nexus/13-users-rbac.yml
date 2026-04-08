@@ -49,6 +49,11 @@ repo_test_nexus_username: "repo-test"
 repo_test_nexus_password: "CHANGE_ME"
 repo_test_nexus_email: "repo-test@example.local"
 
+# --- msm
+msm_nexus_username: "repo-msm"
+msm_nexus_password: "CHANGE_ME"
+msm_nexus_email: "repo-msm@example.local"
+
 # --- repo-preprod
 repo_preprod_nexus_username: "repo-preprod"
 repo_preprod_nexus_password: "CHANGE_ME"
@@ -188,6 +193,15 @@ nexus_local_users:
     last_name: Test
     email: "{{ repo_test_nexus_email }}"
     password: "{{ repo_test_nexus_password }}"
+    roles:
+      - repo-readers
+      - ci-publisher
+
+  - username: "{{ msm_nexus_username }}"
+    first_name: MSM
+    last_name: User
+    email: "{{ msm_nexus_email }}"
+    password: "{{ msm_nexus_password }}"
     roles:
       - repo-readers
       - ci-publisher
