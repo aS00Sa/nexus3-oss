@@ -1,4 +1,4 @@
-# См. examples/WG1.domains; при первом деплое копируется на хост, дальше правка на Nexus.
+# Один FQDN на строку; при первом деплое копируется на хост, дальше правка на Nexus.
 registry.npmjs.org
 releases.hashicorp.com
 apt.releases.hashicorp.com

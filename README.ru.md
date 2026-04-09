@@ -25,7 +25,7 @@
 
 **On-demand (`nexus_wireguard_ondemand: true`, в примере — `14-wireguard-nexus.yml`):** **`wg-quick@<interface>`** не в автозапуске и после деплоя **остановлен**; **`nexus-wg-ondemand.timer`** периодически смотрит исходящие соединения (**`ss`**): если пир совпадает с резолвом из **`.domains`** или попадает в сеть из **`.static`**, поднимается WireGuard и вызывается refresh **AllowedIPs**; после **`nexus_wireguard_ondemand_idle_sec`** секунд без такого трафика интерфейс снова гасится. Интервал опроса — **`nexus_wireguard_ondemand_poll_sec`**. Нужен пакет **`python3`** (переменная **`nexus_wireguard_ondemand_python_pkg`**). Таймер **`nexus-wg-refresh-allowed-ips`** при поднятом интерфейсе по-прежнему обновляет DNS; при выключенном WG unit refresh не выполняется (**`ExecCondition`**). Всегда включённый туннель: **`nexus_wireguard_ondemand: false`**.
 
-Пакеты: **`wireguard-tools`**. Примеры: **`examples/wireguard-wg1-group_vars.yml`**, **`examples/WG1.domains`**, **`examples/WG1.static`**.
+Пакеты: **`wireguard-tools`**. Примеры: **`examples/wireguard-wg1-group_vars.yml`**, **`examples/WG1.static`**. Рабочий файл доменов: **`templates/WG1.domains`**.
 
 ## Пример деплоя (`install.yml`)
 

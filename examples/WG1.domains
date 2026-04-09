@@ -1,9 +1,0 @@
-# Один FQDN на строку. Скопируйте в templates/WG1.domains или правьте /etc/wireguard/wg1.domains на хосте.
-registry.npmjs.org
-releases.hashicorp.com
-apt.releases.hashicorp.com
-rpm.releases.hashicorp.com
-repo.mongodb.org
-downloads.mongodb.org
-download.redis.io
-packages.redis.io
