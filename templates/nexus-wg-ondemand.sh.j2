@@ -1,12 +1,13 @@
 #!/bin/bash
-# Поднять wg-quick@{{ nexus_wireguard_interface }} при исходящем трафике к хостам из .domains / .static; выключить после простоя.
+# Поднять {{ nexus_wireguard_quick_unit }}@{{ nexus_wireguard_interface }} при исходящем трафике к хостам из .domains / .static; выключить после простоя.
 set -euo pipefail
 IFACE="{{ nexus_wireguard_interface }}"
-DOMAINS_FILE="/etc/wireguard/${IFACE}.domains"
-STATIC_FILE="/etc/wireguard/${IFACE}.static"
+LISTS_DIR="{{ nexus_wireguard_lists_dir }}"
+DOMAINS_FILE="${LISTS_DIR}/{{ nexus_wireguard_lists_domains_basename }}"
+STATIC_FILE="${LISTS_DIR}/{{ nexus_wireguard_lists_static_basename }}"
 STATE=/run/nexus-wg-ondemand.state
 IDLE_SEC={{ nexus_wireguard_ondemand_idle_sec | int }}
-WG_UNIT="wg-quick@${IFACE}.service"
+WG_UNIT="{{ nexus_wireguard_quick_unit }}@${IFACE}.service"
 NOW=$(date +%s)
 
 read_last_match() {

@@ -1,14 +1,26 @@
 ---
-# Устанавливает wireguard-tools, копирует ваш конфиг с контроллера на интерфейс wg-quick@<имя>.
-# Конфиг: templates/{{ nexus_wireguard_config_file }}.
-# На хосте: /etc/wireguard/<iface>.domains и .static (создаются один раз, force: false).
-# Опционально templates/WG1.domains, WG1.static или seed в defaults.
+# wg-quick: wireguard-tools + конфиг с контроллера. amneziawg: awg0.conf на хосте; списки FQDN/CIDR — в nexus_wireguard_lists_dir (общий для обоих).
+# Конфиг интерфейса: {{ nexus_wireguard_state_dir }}/<iface>.conf; списки: {{ nexus_wireguard_lists_dir }}/<basename>.
+- name: Каталог для .conf интерфейса
+  ansible.builtin.file:
+    path: "{{ nexus_wireguard_state_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: Каталог общих списков split-tunnel (domains / static)
+  ansible.builtin.file:
+    path: "{{ nexus_wireguard_lists_dir }}"
+    state: directory
+    mode: "0755"
+  when: nexus_wireguard_split_tunnel | default(true) | bool
+
 - name: Проверить наличие файла WireGuard на контроллере Ansible
   ansible.builtin.stat:
     path: "{{ role_path }}/templates/{{ nexus_wireguard_config_file }}"
   delegate_to: localhost
   become: false
   register: _nexus_wg_src
+  when: nexus_wireguard_backend | default('wg-quick') == 'wg-quick'
 
 - name: Assert — положите конфиг WireGuard в templates/
   ansible.builtin.assert:
@@ -18,11 +30,29 @@
     fail_msg: >-
       Нет файла {{ role_path }}/templates/{{ nexus_wireguard_config_file }}.
       Скопируйте туда готовый wg-quick конфиг (имя задаётся в nexus_wireguard_config_file).
+  when: nexus_wireguard_backend | default('wg-quick') == 'wg-quick'
+
+- name: Проверить наличие конфига AmneziaWG на Nexus
+  ansible.builtin.stat:
+    path: "{{ nexus_wireguard_state_dir }}/{{ nexus_wireguard_interface }}.conf"
+  register: _nexus_awg_conf_stat
+  when: nexus_wireguard_backend | default('wg-quick') == 'amneziawg'
+
+- name: Assert — режим amneziawg требует готовый .conf на хосте
+  ansible.builtin.assert:
+    that:
+      - _nexus_awg_conf_stat.stat.exists | bool
+      - _nexus_awg_conf_stat.stat.isreg | bool
+    fail_msg: >-
+      Ожидается {{ nexus_wireguard_state_dir }}/{{ nexus_wireguard_interface }}.conf
+      (AmneziaWG). Роль не копирует awg0.conf из Ansible.
+  when: nexus_wireguard_backend | default('wg-quick') == 'amneziawg'
 
 - name: Установить пакет wireguard-tools
   ansible.builtin.package:
     name: "{{ nexus_wireguard_packages }}"
     state: present
+  when: nexus_wireguard_backend | default('wg-quick') == 'wg-quick'
 
 - name: Python 3 для скрипта on-demand WireGuard
   ansible.builtin.package:
@@ -43,7 +73,7 @@
 - name: Список доменов на Nexus — один раз с контроллера (не перезаписывать, если уже есть)
   ansible.builtin.copy:
     src: "{{ role_path }}/templates/{{ nexus_wireguard_domains_file }}"
-    dest: "/etc/wireguard/{{ nexus_wireguard_interface }}.domains"
+    dest: "{{ nexus_wireguard_lists_dir }}/{{ nexus_wireguard_lists_domains_basename }}"
     owner: root
     group: root
     mode: "0644"
@@ -55,7 +85,7 @@
 
 - name: Список доменов на Nexus — один раз из seed (если нет templates/{{ nexus_wireguard_domains_file }})
   ansible.builtin.copy:
-    dest: "/etc/wireguard/{{ nexus_wireguard_interface }}.domains"
+    dest: "{{ nexus_wireguard_lists_dir }}/{{ nexus_wireguard_lists_domains_basename }}"
     owner: root
     group: root
     mode: "0644"
@@ -77,7 +107,7 @@
 - name: Статические CIDR на Nexus — один раз с контроллера (не перезаписывать, если уже есть)
   ansible.builtin.copy:
     src: "{{ role_path }}/templates/{{ nexus_wireguard_static_file }}"
-    dest: "/etc/wireguard/{{ nexus_wireguard_interface }}.static"
+    dest: "{{ nexus_wireguard_lists_dir }}/{{ nexus_wireguard_lists_static_basename }}"
     owner: root
     group: root
     mode: "0644"
@@ -88,7 +118,7 @@
 
 - name: Статические CIDR на Nexus — один раз из seed (если нет templates/{{ nexus_wireguard_static_file }})
   ansible.builtin.copy:
-    dest: "/etc/wireguard/{{ nexus_wireguard_interface }}.static"
+    dest: "{{ nexus_wireguard_lists_dir }}/{{ nexus_wireguard_lists_static_basename }}"
     owner: root
     group: root
     mode: "0644"
@@ -97,6 +127,25 @@
   when: >-
     nexus_wireguard_split_tunnel | default(true) | bool
     and not (_nexus_wg_static_src.stat.exists | default(false) | bool)
+
+- name: Проверить наличие файла .domains (для идемпотентного дополнения)
+  ansible.builtin.stat:
+    path: "{{ nexus_wireguard_lists_dir }}/{{ nexus_wireguard_lists_domains_basename }}"
+  register: _nexus_wg_domains_path_stat
+
+- name: Дополнить .domains FQDN для маршрутизации через WG (Docker Hub и др.)
+  ansible.builtin.lineinfile:
+    path: "{{ nexus_wireguard_lists_dir }}/{{ nexus_wireguard_lists_domains_basename }}"
+    line: "{{ item }}"
+    regexp: '^{{ item | regex_escape }}$'
+    create: false
+    mode: "0644"
+  loop: "{{ nexus_wireguard_domains_ensure_lines | default([]) }}"
+  when:
+    - nexus_wireguard_split_tunnel | default(true) | bool
+    - nexus_wireguard_domains_ensure_lines | default([]) | length > 0
+    - _nexus_wg_domains_path_stat.stat.exists | bool
+  register: _nexus_wg_domains_ensure_result
 
 - name: Скрипт обновления AllowedIPs по списку доменов
   ansible.builtin.template:
@@ -117,32 +166,35 @@
 - name: Развернуть конфиг WireGuard на хост Nexus
   ansible.builtin.template:
     src: "{{ nexus_wireguard_config_file }}"
-    dest: "/etc/wireguard/{{ nexus_wireguard_interface }}.conf"
+    dest: "{{ nexus_wireguard_state_dir }}/{{ nexus_wireguard_interface }}.conf"
     owner: root
     group: root
     mode: "0600"
+  when: nexus_wireguard_backend | default('wg-quick') == 'wg-quick'
   register: _nexus_wg_conf_deploy
 
 - name: Добавить PostUp для split-tunnel (перед [Peer])
   ansible.builtin.lineinfile:
-    path: "/etc/wireguard/{{ nexus_wireguard_interface }}.conf"
+    path: "{{ nexus_wireguard_state_dir }}/{{ nexus_wireguard_interface }}.conf"
     insertbefore: '^\[Peer\]'
     line: PostUp = /usr/local/sbin/nexus-wg-refresh-allowed-ips.sh
     create: false
-  when: nexus_wireguard_split_tunnel | default(true) | bool
+  when: >-
+    nexus_wireguard_backend | default('wg-quick') == 'wg-quick'
+    and nexus_wireguard_split_tunnel | default(true) | bool
   register: _nexus_wg_postup_edit
 
-- name: Каталог drop-in для wg-quick
+- name: Каталог drop-in для wg-quick / awg-quick
   ansible.builtin.file:
-    path: "/etc/systemd/system/wg-quick@{{ nexus_wireguard_interface }}.service.d"
+    path: "/etc/systemd/system/{{ nexus_wireguard_quick_unit }}@{{ nexus_wireguard_interface }}.service.d"
     state: directory
     owner: root
     group: root
     mode: "0755"
 
-- name: wg-quick раньше nexus.service
+- name: Drop-in — vpn-quick раньше nexus.service
   ansible.builtin.copy:
-    dest: "/etc/systemd/system/wg-quick@{{ nexus_wireguard_interface }}.service.d/before-nexus.conf"
+    dest: "/etc/systemd/system/{{ nexus_wireguard_quick_unit }}@{{ nexus_wireguard_interface }}.service.d/before-nexus.conf"
     owner: root
     group: root
     mode: "0644"
@@ -251,37 +303,39 @@
 
 - name: Включить и перезапустить WireGuard (always-on)
   ansible.builtin.systemd:
-    name: "wg-quick@{{ nexus_wireguard_interface }}.service"
+    name: "{{ nexus_wireguard_quick_unit }}@{{ nexus_wireguard_interface }}.service"
     enabled: true
     state: restarted
   when: >-
     not (nexus_wireguard_ondemand | default(false) | bool)
     and (
-      (_nexus_wg_conf_deploy is changed) or
+      (_nexus_wg_conf_deploy is defined and _nexus_wg_conf_deploy is changed) or
       (_nexus_wg_postup_edit is defined and _nexus_wg_postup_edit is changed) or
       (_nexus_wg_script_deploy is defined and _nexus_wg_script_deploy is changed) or
       (_nexus_wg_dropin_deploy is changed) or
-      (nexus_wireguard_split_tunnel | default(true) | bool and _nexus_wg_timer_deploy is defined and _nexus_wg_timer_deploy is changed)
+      (nexus_wireguard_split_tunnel | default(true) | bool and _nexus_wg_timer_deploy is defined and _nexus_wg_timer_deploy is changed) or
+      (_nexus_wg_domains_ensure_result is defined and _nexus_wg_domains_ensure_result is changed)
     )
 
 - name: Включить WireGuard без перезапуска (always-on)
   ansible.builtin.systemd:
-    name: "wg-quick@{{ nexus_wireguard_interface }}.service"
+    name: "{{ nexus_wireguard_quick_unit }}@{{ nexus_wireguard_interface }}.service"
     enabled: true
     state: started
   when: >-
     not (nexus_wireguard_ondemand | default(false) | bool)
     and not (
-      (_nexus_wg_conf_deploy is changed) or
+      (_nexus_wg_conf_deploy is defined and _nexus_wg_conf_deploy is changed) or
       (_nexus_wg_postup_edit is defined and _nexus_wg_postup_edit is changed) or
       (_nexus_wg_script_deploy is defined and _nexus_wg_script_deploy is changed) or
       (_nexus_wg_dropin_deploy is changed) or
-      (nexus_wireguard_split_tunnel | default(true) | bool and _nexus_wg_timer_deploy is defined and _nexus_wg_timer_deploy is changed)
+      (nexus_wireguard_split_tunnel | default(true) | bool and _nexus_wg_timer_deploy is defined and _nexus_wg_timer_deploy is changed) or
+      (_nexus_wg_domains_ensure_result is defined and _nexus_wg_domains_ensure_result is changed)
     )
 
 - name: WireGuard on-demand — не автозапуск, интерфейс выключен после деплоя
   ansible.builtin.systemd:
-    name: "wg-quick@{{ nexus_wireguard_interface }}.service"
+    name: "{{ nexus_wireguard_quick_unit }}@{{ nexus_wireguard_interface }}.service"
     enabled: false
     state: stopped
   when: >-
@@ -295,6 +349,15 @@
     state: started
     daemon_reload: true
   when: nexus_wireguard_split_tunnel | default(true) | bool
+
+- name: Однократно refresh AllowedIPs после изменения .domains
+  ansible.builtin.systemd:
+    name: nexus-wg-refresh-allowed-ips.service
+    state: started
+  when: >-
+    nexus_wireguard_split_tunnel | default(true) | bool
+    and (_nexus_wg_domains_ensure_result is defined and _nexus_wg_domains_ensure_result is changed)
+  failed_when: false
 
 - name: Запустить timer on-demand WireGuard
   ansible.builtin.systemd:

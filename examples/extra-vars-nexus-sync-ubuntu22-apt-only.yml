@@ -1,0 +1,35 @@
+---
+# Точечный прогон: только создание/обновление двух APT proxy Ubuntu 22.04 (jammy) в уже работающем Nexus.
+# Условие: ранее выполнен полный деплой (blobstore blob-apt и скрипты API уже есть).
+# Запуск: см. examples/run-nexus-sync-ubuntu22-apt-only.sh
+nexus_sync_repositories_only: true
+nexus_wireguard_enable: false
+
+nexus_config_maven: false
+nexus_config_docker: false
+nexus_config_npm: false
+nexus_config_raw: false
+nexus_config_yum: false
+nexus_config_pypi: false
+nexus_config_rubygems: false
+nexus_config_bower: false
+nexus_config_nuget: false
+nexus_config_gitlfs: false
+nexus_config_helm: false
+nexus_config_r: false
+nexus_config_p2: false
+nexus_config_conda: false
+nexus_config_go: false
+nexus_config_apt: true
+
+nexus_repos_apt_proxy:
+  - name: apt-ubuntu-22.04-jammy
+    remote_url: https://archive.ubuntu.com/ubuntu/
+    distribution: jammy
+    flat: false
+  - name: apt-ubuntu-22.04-jammy-security
+    remote_url: https://security.ubuntu.com/ubuntu/
+    distribution: jammy-security
+    flat: false
+
+nexus_repos_apt_hosted: []

@@ -5,5 +5,5 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
-ExecCondition=/usr/bin/systemctl is-active wg-quick@{{ nexus_wireguard_interface }}.service --quiet
+ExecCondition=/usr/bin/systemctl is-active {{ nexus_wireguard_quick_unit }}@{{ nexus_wireguard_interface }}.service --quiet
 ExecStart=/usr/local/sbin/nexus-wg-refresh-allowed-ips.sh

@@ -1,10 +1,13 @@
 #!/bin/bash
-# AllowedIPs: /etc/wireguard/<iface>.static (CIDR на строку) и .domains (FQDN); деплой эти файлы не перезаписывает.
+# AllowedIPs: списки в {{ nexus_wireguard_lists_dir }}/ (общие для wg / awg); .conf интерфейса — в STATE_DIR.
 set -euo pipefail
 IFACE="{{ nexus_wireguard_interface }}"
-CONF="/etc/wireguard/${IFACE}.conf"
-STATIC_FILE="/etc/wireguard/${IFACE}.static"
-DOMAINS_FILE="/etc/wireguard/${IFACE}.domains"
+STATE_DIR="{{ nexus_wireguard_state_dir }}"
+LISTS_DIR="{{ nexus_wireguard_lists_dir }}"
+CLI="{{ nexus_wireguard_cli }}"
+CONF="${STATE_DIR}/${IFACE}.conf"
+STATIC_FILE="${LISTS_DIR}/{{ nexus_wireguard_lists_static_basename }}"
+DOMAINS_FILE="${LISTS_DIR}/{{ nexus_wireguard_lists_domains_basename }}"
 PEER="$(grep -m1 '^PublicKey' "$CONF" | sed 's/^PublicKey *= *//;s/[[:space:]]*$//')"
 if [ -z "$PEER" ]; then
   echo "nexus-wg-refresh: no PublicKey in $CONF" >&2
@@ -41,9 +44,24 @@ collect_ips() {
   done < "$DOMAINS_FILE"
   echo "$out"
 }
-ALLOWED="$(collect_ips)"
-if [ -z "$ALLOWED" ]; then
+MAX_ENTRIES={{ nexus_wireguard_refresh_allowedips_max_entries | int }}
+ALLOWED_RAW="$(collect_ips)"
+if [ -z "$ALLOWED_RAW" ]; then
   echo "nexus-wg-refresh: nothing to apply (пусто $STATIC_FILE и нет резолва из $DOMAINS_FILE) — оставляем AllowedIPs из $CONF" >&2
   exit 0
 fi
-wg set "$IFACE" peer "$PEER" allowed-ips "$ALLOWED"
+# Глобальный дедуп префиксов (один IP мог прийти из нескольких FQDN). Слишком длинный список → netlink ENOSPC, часто как «No space left on device» при нормальном df.
+ALLOWED=$(printf '%s' "$ALLOWED_RAW" | tr ',' '\n' | sed '/^[[:space:]]*$/d' | sort -u)
+if [ "${MAX_ENTRIES}" -gt 0 ]; then
+  cnt=$(printf '%s\n' "$ALLOWED" | sed '/^$/d' | wc -l | tr -d '[:space:]')
+  if [ "${cnt:-0}" -gt "$MAX_ENTRIES" ]; then
+    echo "nexus-wg-refresh: предупреждение — префиксов ${cnt}, оставляю первые ${MAX_ENTRIES} (nexus_wireguard_refresh_allowedips_max_entries)" >&2
+    ALLOWED=$(printf '%s\n' "$ALLOWED" | head -n "$MAX_ENTRIES")
+  fi
+fi
+ALLOWED=$(printf '%s\n' "$ALLOWED" | paste -sd, -)
+if [ -z "$ALLOWED" ]; then
+  echo "nexus-wg-refresh: после дедупа список пуст" >&2
+  exit 0
+fi
+"${CLI}" set "$IFACE" peer "$PEER" allowed-ips "$ALLOWED"

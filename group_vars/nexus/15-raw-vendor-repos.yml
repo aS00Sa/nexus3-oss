@@ -17,6 +17,8 @@ nexus_repos_raw_proxy:
     remote_url: https://download.redis.io/
   - name: raw-redis-packages
     remote_url: https://packages.redis.io/
+  - name: raw-alpine
+    remote_url: https://dl-cdn.alpinelinux.org/alpine/
 nexus_repos_raw_hosted:
   - name: raw-internal
     version_policy: release
@@ -32,3 +34,4 @@ nexus_repos_raw_group:
       - raw-mongodb-org
       - raw-redis-download
       - raw-redis-packages
+      - raw-alpine

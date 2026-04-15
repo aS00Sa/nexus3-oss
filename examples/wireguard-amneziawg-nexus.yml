@@ -1,0 +1,10 @@
+# Пример group_vars: AmneziaWG уже на хосте (awg0.conf); списки FQDN/CIDR — в nexus_wireguard_lists_dir (по умолчанию /etc/domains/),
+# скрипт nexus-wg-refresh-allowed-ips.sh (awg set … allowed-ips), таймер; awg0.conf не трогаем.
+nexus_wireguard_enable: true
+nexus_wireguard_backend: amneziawg
+nexus_wireguard_interface: awg0
+nexus_wireguard_state_dir: /etc/amnezia/amneziawg
+nexus_wireguard_cli: awg
+nexus_wireguard_quick_unit: awg-quick
+nexus_wireguard_split_tunnel: true
+nexus_wireguard_ondemand: false

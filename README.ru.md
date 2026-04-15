@@ -64,6 +64,8 @@ export ANSIBLE_CONFIG="$PWD/ansible.cfg"
 ansible-playbook -i inventory-localdomain.ini install.yml --private-key ~/.ssh/id_rsa -v
 ```
 
+Только **два APT proxy Ubuntu 22.04** в уже развёрнутом Nexus (вывод в лог под **`logs/`**): **`bash examples/run-nexus-sync-ubuntu22-apt-only.sh`** — см. **`examples/extra-vars-nexus-sync-ubuntu22-apt-only.yml`**. Свой инвентарь: **`INV=$PWD/inventory.ini`**, ключ: **`EXTRA='--private-key ~/.ssh/id_ed25519'`**. Вручную с **`tee`**: **`ansible-playbook -i … install.yml -e @examples/extra-vars-nexus-sync-ubuntu22-apt-only.yml -v 2>&1 | tee nexus-sync-$(date +%Y%m%d-%H%M).log`**.
+
 Инвентарь и **`ansible_user`** — свои. Ключ в **`--private-key`** должен быть в **`authorized_keys`** на хосте (при необходимости **`~/.ssh/id_ed25519`**). WireGuard: **`templates/WG1.conf`**, при необходимости **`WG1.domains`**, **`WG1.static`**.
 
 Если Ansible пишет, что игнорирует **`ansible.cfg`** из‑за прав на каталог **`/mnt/c/...`**: выполните **`cd ~`**, затем **`export ANSIBLE_CONFIG=/полный/путь/к/ansible-role-nexus3-oss/ansible.cfg`** и укажите полные пути к **`install.yml`** и к **`-i …`**. Смена ключа хоста: **`ssh-keygen -f ~/.ssh/known_hosts -R <IP>`**.

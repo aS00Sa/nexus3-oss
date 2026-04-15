@@ -1,6 +1,6 @@
 ---
 # WireGuard: готовый конфиг в role templates/WG1.conf (локально, в .gitignore).
-# На хосте: wg1.domains и wg1.static (или templates/WG1.* + seed в defaults при первом деплое).
+# Списки на хосте: /etc/domains/domains и /etc/domains/static (nexus_wireguard_lists_dir); conf wg1 — в /etc/wireguard/.
 nexus_wireguard_enable: true
 # nexus_wireguard_interface: wg1
 # nexus_wireguard_config_file: WG1.conf
