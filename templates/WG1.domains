@@ -1,4 +1,4 @@
-# Один FQDN на строку; при первом деплое копируется на хост, дальше правка на Nexus.
+# Один FQDN на строку; при деплое копируется в /etc/domains/domains (общий список для wg-quick и AmneziaWG).
 registry.npmjs.org
 releases.hashicorp.com
 apt.releases.hashicorp.com
@@ -7,3 +7,9 @@ repo.mongodb.org
 downloads.mongodb.org
 download.redis.io
 packages.redis.io
+dl-cdn.alpinelinux.org
+# Docker Hub (прокси Nexus docker-proxy → registry-1.docker.io; токены — auth.docker.io)
+registry-1.docker.io
+auth.docker.io
+index.docker.io
+production.cloudflare.docker.com

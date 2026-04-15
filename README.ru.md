@@ -16,16 +16,24 @@
 
 ### WireGuard на хосте Nexus (опционально)
 
-При **`nexus_wireguard_enable: true`** роль ставит **`wireguard-tools`**, копирует **ваш готовый wg-quick конфиг** с контроллера в **`/etc/wireguard/{{ nexus_wireguard_interface }}.conf`** и включает **`wg-quick@<interface>`** (до **`nexus.service`**). Это **не** HTTP-прокси в UI Nexus.
+Режим по умолчанию — **`nexus_wireguard_backend: wg-quick`**. При **`nexus_wireguard_enable: true`** роль ставит **`wireguard-tools`**, копирует **ваш готовый wg-quick конфиг** с контроллера в **`{{ nexus_wireguard_state_dir }}/{{ nexus_wireguard_interface }}.conf`** (по умолчанию **`/etc/wireguard/…`**) и включает **`{{ nexus_wireguard_quick_unit }}@<interface>`** — обычно **`wg-quick@…`** (до **`nexus.service`**). Это **не** HTTP-прокси в UI Nexus.
 
-1. Положите файл в **`templates/{{ nexus_wireguard_config_file }}`** роли (по умолчанию **`templates/WG1.conf`**). Обычно файл в **`.gitignore`**, в git не коммитится.
-2. При необходимости смените **`nexus_wireguard_interface`** (имя интерфейса и юнита **`wg-quick@…`**).
+**AmneziaWG (`nexus_wireguard_backend: amneziawg`):** конфиг уже на хосте (например **`/etc/amnezia/amneziawg/awg0.conf`**); роль **не копирует** и **не правит PostUp** в нём. Списки FQDN/CIDR — в **`{{ nexus_wireguard_lists_dir }}`** (по умолчанию **`/etc/domains`**, файлы **`domains`** и **`static`** — имена задаются **`nexus_wireguard_lists_*_basename`**). Скрипт **`nexus-wg-refresh-allowed-ips.sh`** вызывает **`awg set … allowed-ips`**, таймер срабатывает только если активен **`awg-quick@…`**. Пример: **`examples/wireguard-amneziawg-nexus.yml`**.
 
-**Маршрутизация по доменам (split tunnel):** на Nexus два текстовых файла (деплой **не перезаписывает**, если уже есть): **`/etc/wireguard/<interface>.domains`** — **один FQDN на строку**; **`/etc/wireguard/<interface>.static`** — **один CIDR/prefix на строку** (например **`10.0.0.0/24`**). Строки с **`#`** — комментарии. Скрипт и таймер: **`getent ahosts`** по доменам, **`PublicKey`** пира из **`.conf`**, **`wg set … allowed-ips`**. При **первом** создании: либо **`templates/WG1.domains`** / **`templates/WG1.static`** (имена задаются **`nexus_wireguard_domains_file`**, **`nexus_wireguard_static_file`**), либо начальное содержимое из **`nexus_wireguard_domains_seed`** / **`nexus_wireguard_static_seed`** в **`defaults/main.yml`**. Дальше правьте **на сервере**. Отключить скрипт и таймер: **`nexus_wireguard_split_tunnel: false`**.
+1. Режим **wg-quick**: положите файл в **`templates/{{ nexus_wireguard_config_file }}`** роли (по умолчанию **`templates/WG1.conf`**). Обычно файл в **`.gitignore`**, в git не коммитится.
+2. При необходимости смените **`nexus_wireguard_interface`**, **`nexus_wireguard_state_dir`**, **`nexus_wireguard_lists_dir`**, **`nexus_wireguard_cli`**, **`nexus_wireguard_quick_unit`**.
 
-**On-demand (`nexus_wireguard_ondemand: true`, в примере — `14-wireguard-nexus.yml`):** **`wg-quick@<interface>`** не в автозапуске и после деплоя **остановлен**; **`nexus-wg-ondemand.timer`** периодически смотрит исходящие соединения (**`ss`**): если пир совпадает с резолвом из **`.domains`** или попадает в сеть из **`.static`**, поднимается WireGuard и вызывается refresh **AllowedIPs**; после **`nexus_wireguard_ondemand_idle_sec`** секунд без такого трафика интерфейс снова гасится. Интервал опроса — **`nexus_wireguard_ondemand_poll_sec`**. Нужен пакет **`python3`** (переменная **`nexus_wireguard_ondemand_python_pkg`**). Таймер **`nexus-wg-refresh-allowed-ips`** при поднятом интерфейсе по-прежнему обновляет DNS; при выключенном WG unit refresh не выполняется (**`ExecCondition`**). Всегда включённый туннель: **`nexus_wireguard_ondemand: false`**.
+**Маршрутизация по доменам (split tunnel):** один общий каталог **`nexus_wireguard_lists_dir`** (по умолчанию **`/etc/domains`**) для **wg-quick и AmneziaWG**: **`…/domains`** — **один FQDN на строку**; **`…/static`** — **один CIDR/prefix на строку** (имена — **`nexus_wireguard_lists_domains_basename`** / **`nexus_wireguard_lists_static_basename`**). Раньше использовались **`/etc/wireguard/<iface>.domains`** — при обновлении роли перенесите содержимое в новые файлы. Строки с **`#`** — комментарии. Скрипт и таймер: **`getent ahosts`**, **`PublicKey`** пира из **`{{ nexus_wireguard_state_dir }}/<interface>.conf`**, **`{{ nexus_wireguard_cli }} set … allowed-ips`**. При **первом** создании: **`templates/WG1.domains`** / **`templates/WG1.static`** или seed в **`defaults/main.yml`**. Дальше правьте файлы в **`nexus_wireguard_lists_dir`** на сервере. Отключить скрипт и таймер: **`nexus_wireguard_split_tunnel: false`**.
 
-Пакеты: **`wireguard-tools`**. Примеры: **`examples/wireguard-wg1-group_vars.yml`**, **`examples/WG1.static`**. Рабочий файл доменов: **`templates/WG1.domains`**.
+**Список в `…/domains` и `…/static`: что даёт и что не даёт**
+
+- **Даёт:** скрипт refresh по строкам из **`domains`** вызывает **`getent ahosts`**, из полученных IP собирает **`allowed-ips`** у пира; строки из **`static`** добавляются как CIDR. Пока VPN-интерфейс поднят и refresh применён, **исходящий трафик к этим адресам** идёт **через туннель** (split-tunnel: не весь интернет, а только перечисленное). Таймер периодически обновляет IP у «плавающих» CDN.
+- **Не даёт:** не настраивает **системный DNS** (**`systemd-resolved`**, **`/etc/resolv.conf`**) и не меняет поведение **`dockerd`**/**Nexus JVM** при резолве имён. Если **`getent`** на хосте не получает ответ, в **`allowed-ips`** эти имена **не попадут**. Проблемы вида **`lookup … on 127.0.0.53: i/o timeout`** нужно решать отдельно (апстрим DNS, **`daemon.json`** у Docker, DNS на интерфейсе VPN и т.д.).
+- **Ошибка «No space left on device» у `awg set` / `wg set`:** часто это **не диск**, а **лимит размера netlink** при слишком длинном **`allowed-ips`** (много `/32` от CDN после резолва всех строк в **`domains`**). Скрипт refresh **дедуплицирует** префиксы; при необходимости задайте **`nexus_wireguard_refresh_allowedips_max_entries`** (например **1024**) или сократите список FQDN / добавьте агрегаты в **`static`**.
+
+**On-demand (`nexus_wireguard_ondemand: true`, в примере — `14-wireguard-nexus.yml`):** юнит **`{{ nexus_wireguard_quick_unit }}@<interface>`** не в автозапуске и после деплоя **остановлен**; **`nexus-wg-ondemand.timer`** периодически смотрит исходящие соединения (**`ss`**): при совпадении с резолвом из **`.domains`** или сетью из **`.static`** поднимается туннель и вызывается refresh **AllowedIPs**; после **`nexus_wireguard_ondemand_idle_sec`** без такого трафика интерфейс снова гасится. Интервал опроса — **`nexus_wireguard_ondemand_poll_sec`**. Нужен пакет **`python3`** (**`nexus_wireguard_ondemand_python_pkg`**). Таймер **`nexus-wg-refresh-allowed-ips`** при поднятом интерфейсе обновляет адреса; при выключенном VPN unit refresh не выполняется (**`ExecCondition`**). Всегда включённый туннель: **`nexus_wireguard_ondemand: false`**.
+
+Пакеты: **`wireguard-tools`** (только в режиме **wg-quick**). Примеры: **`examples/wireguard-wg1-group_vars.yml`**, **`examples/wireguard-amneziawg-nexus.yml`**, **`examples/WG1.static`**. Рабочий файл доменов в git: **`templates/WG1.domains`**.
 
 ## Пример деплоя (`install.yml`)
 
@@ -41,7 +49,7 @@
 | `11-backup.yml` | Еженедельный бэкап БД и blobstore |
 | `12-scheduled-tasks.yml` | Docker GC, compact blobstore |
 | `13-users-rbac.yml` | Пользователи (repo-dev/test/stage/prod, gitlab-ci), роли и привилегии |
-| `14-wireguard-nexus.yml` | WireGuard на хосте Nexus (`templates/WG1.conf`); split — **`/etc/wireguard/wg1.domains`** и **`wg1.static`** на хосте |
+| `14-wireguard-nexus.yml` | WireGuard на хосте Nexus (`templates/WG1.conf`); split — списки в **`/etc/domains/domains`** и **`/etc/domains/static`** (см. **`nexus_wireguard_lists_dir`**) |
 | `15-raw-vendor-repos.yml` | Raw: HashiCorp releases, MongoDB repo + `raw-all` |
 
 Почему не `defaults/main.yml` роли: там значения по умолчанию для Galaxy; пример инсталляции — в **`group_vars`**.
@@ -78,7 +86,7 @@ ansible-playbook -i inventory-localdomain.ini install.yml --private-key ~/.ssh/i
 - **Docker:** `docker-proxy`, `docker-hosted`, `docker-group`
 - **NPM:** `npm-proxy`, `npm-hosted`, `npm-group` (PM2 и пр. — тот же **registry.npmjs.org**)
 - **Raw:** `raw-internal`, `ubuntu-archive`, `raw-hashicorp-releases`, `raw-hashicorp-apt`, `raw-hashicorp-rpm`, `raw-mongodb-org`, `raw-redis-download`, `raw-redis-packages`, `raw-all`
-- **APT:** `apt-ubuntu-24.04-noble`, `apt-ubuntu-24.04-noble-security`, `apt-debian-12-bookworm`, `apt-debian-12-bookworm-security`, `apt-debian-13-trixie`, `apt-debian-13-trixie-updates`, `apt-debian-13-trixie-backports`, `apt-debian-13-trixie-security`, `apt-gitlab-ce-ubuntu-noble`, `apt-gitlab-ce-debian-bookworm`, `apt-gitlab-ce-debian-trixie`
+- **APT:** `apt-ubuntu-24.04-noble`, `apt-ubuntu-24.04-noble-security`, `apt-ubuntu-22.04-jammy`, `apt-ubuntu-22.04-jammy-security`, `apt-debian-12-bookworm`, `apt-debian-12-bookworm-security`, `apt-debian-13-trixie`, `apt-debian-13-trixie-updates`, `apt-debian-13-trixie-backports`, `apt-debian-13-trixie-security`, `apt-gitlab-ce-ubuntu-noble`, `apt-gitlab-ce-debian-bookworm`, `apt-gitlab-ce-debian-trixie`
 - **YUM:** `yum-almalinux-9-x86_64-baseos`, `yum-almalinux-9-x86_64-appstream`, `yum-almalinux-10-x86_64-baseos`, `yum-almalinux-10-x86_64-appstream`
 
 Та же сводка продублирована комментарием в начале **`group_vars/nexus/13-users-rbac.yml`**.
@@ -91,6 +99,8 @@ ansible-playbook -i inventory-localdomain.ini install.yml --private-key ~/.ssh/i
 |---------------------|----------|------------------------|
 | `apt-ubuntu-24.04-noble` | https://archive.ubuntu.com/ubuntu/ | noble (Ubuntu 24.04 LTS) |
 | `apt-ubuntu-24.04-noble-security` | https://security.ubuntu.com/ubuntu/ | noble-security (Ubuntu 24.04) |
+| `apt-ubuntu-22.04-jammy` | https://archive.ubuntu.com/ubuntu/ | jammy (Ubuntu 22.04 LTS) |
+| `apt-ubuntu-22.04-jammy-security` | https://security.ubuntu.com/ubuntu/ | jammy-security (Ubuntu 22.04) |
 | `apt-debian-12-bookworm` | https://deb.debian.org/debian | bookworm (Debian 12) |
 | `apt-debian-12-bookworm-security` | https://deb.debian.org/debian-security | bookworm-security (Debian 12) |
 | `apt-debian-13-trixie` | https://deb.debian.org/debian | trixie (Debian 13) |
@@ -404,4 +414,16 @@ debian13-network.yaml — в формате network v2 (version: 2), см. Proxm
 sudo cloud-init status --long
 sudo cat /var/log/cloud-init-output.log
 Итог: всё сводится к cicustom + YAML с write_files и при необходимости runcmd/package_*; Proxmox только подставляет этот файл как user-data на виртуальный CD/диск cloud-init.
+
+Команда, которой всё прошло
+cd /mnt/c/Users/User/git/ansible-role-nexus3-oss
+ANSIBLE_ROLES_PATH=/mnt/c/Users/User/git ansible-playbook \
+  -i inventory-infra-btnxlocal.ini install.yml \
+  -e nexus_wireguard_enable=true \
+  -e nexus_wireguard_backend=amneziawg \
+  -e nexus_wireguard_interface=awg0 \
+  -e nexus_wireguard_state_dir=/etc/amnezia/amneziawg \
+  -e nexus_wireguard_cli=awg \
+  -e nexus_wireguard_quick_unit=awg-quick
+На сервере должны появиться /etc/domains/domains, /etc/domains/static, обновлённый nexus-wg-refresh-allowed-ips.sh, таймер и т.д. (в логе были changed на seed доменов, lineinfile для Docker, unit/timer refresh).
 

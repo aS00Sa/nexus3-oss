@@ -1,0 +1,11 @@
+---
+# Ubuntu 22.04 LTS (jammy): отдельный прокси на каждый suite (jammy-security — security.ubuntu.com).
+nexus_apt_proxy_ubuntu_jammy:
+  - name: apt-ubuntu-22.04-jammy
+    remote_url: https://archive.ubuntu.com/ubuntu/
+    distribution: jammy
+    flat: false
+  - name: apt-ubuntu-22.04-jammy-security
+    remote_url: https://security.ubuntu.com/ubuntu/
+    distribution: jammy-security
+    flat: false

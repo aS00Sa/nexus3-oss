@@ -22,7 +22,8 @@
 #   NPM: npm-proxy, npm-hosted, npm-group
 #   Raw: raw-internal, ubuntu-archive, raw-hashicorp-releases, raw-hashicorp-apt, raw-hashicorp-rpm,
 #        raw-mongodb-org, raw-redis-download, raw-redis-packages, raw-all
-#   APT: apt-ubuntu-24.04-noble, apt-ubuntu-24.04-noble-security, apt-debian-12-bookworm,
+#   APT: apt-ubuntu-24.04-noble, apt-ubuntu-24.04-noble-security, apt-ubuntu-22.04-jammy,
+#        apt-ubuntu-22.04-jammy-security, apt-debian-12-bookworm,
 #        apt-debian-12-bookworm-security, apt-debian-13-trixie, apt-debian-13-trixie-updates,
 #        apt-debian-13-trixie-backports, apt-debian-13-trixie-security,
 #        apt-gitlab-ce-ubuntu-noble, apt-gitlab-ce-debian-bookworm, apt-gitlab-ce-debian-trixie

@@ -200,19 +200,32 @@ nexus_proxy_exclude_hosts:
 nexus_http_proxy_retries: 2 # in seconds
 nexus_http_proxy_timeout: 20 # seconds
 
-# WireGuard на хосте Nexus: готовый wg-quick конфиг с контроллера → /etc/wireguard/<interface>.conf
+# WireGuard / AmneziaWG на хосте Nexus (исходящий трафик к upstream репозиториев).
 nexus_wireguard_enable: false
-# Имя systemd: wg-quick@<interface>. Имя файла на хосте: /etc/wireguard/<interface>.conf
+# wg-quick — копируем templates/{{ nexus_wireguard_config_file }} в state_dir. amneziawg — .conf уже на хосте; списки FQDN/CIDR — в nexus_wireguard_lists_dir; refresh + drop-in; PostUp в .conf (wg) не трогаем в режиме amneziawg.
+nexus_wireguard_backend: wg-quick
+# Каталог на Nexus: только <interface>.conf (wg-quick или amneziawg).
+nexus_wireguard_state_dir: /etc/wireguard
+# Общий каталог списков FQDN и CIDR для split-tunnel — одинаковый для wg-quick и AmneziaWG (скрипты refresh/ondemand читают отсюда).
+nexus_wireguard_lists_dir: /etc/domains
+# Имена файлов внутри nexus_wireguard_lists_dir (пути: …/domains и …/static).
+nexus_wireguard_lists_domains_basename: domains
+nexus_wireguard_lists_static_basename: static
+# Команда для peer allowed-ips: wg или awg (AmneziaWG tools).
+nexus_wireguard_cli: wg
+# Префикс systemd: wg-quick или awg-quick.
+nexus_wireguard_quick_unit: wg-quick
+# Имя интерфейса (wg1 или awg0).
 nexus_wireguard_interface: wg1
 # Имя файла в каталоге templates/ роли (часто в .gitignore, не коммитить).
 nexus_wireguard_config_file: WG1.conf
-# Рядом с WG1.conf: опциональный начальный список доменов (копируется на хост один раз, пока нет /etc/wireguard/<iface>.domains).
+# Имя шаблона на контроллере → на хост копируется в {{ nexus_wireguard_lists_dir }}/{{ nexus_wireguard_lists_domains_basename }} (один раз, force:false).
 nexus_wireguard_domains_file: WG1.domains
-# Рядом с WG1.domains: статические CIDR/prefix на хосте → /etc/wireguard/<iface>.static (деплой не перезаписывает).
+# Шаблон статики → {{ nexus_wireguard_lists_dir }}/{{ nexus_wireguard_lists_static_basename }}.
 nexus_wireguard_static_file: WG1.static
-# Динамический split-tunnel: скрипт + PostUp + timer читают домены и статику только с хоста (.domains / .static).
+# Динамический split-tunnel: скрипт + PostUp + timer читают списки из nexus_wireguard_lists_dir.
 nexus_wireguard_split_tunnel: true
-# true: wg-quick не в автозапуске, интерфейс поднимается при исходящем трафике к хостам из .domains / .static и гаснет после простоя.
+# true: wg-quick не в автозапуске, интерфейс поднимается при трафике к FQDN из lists_dir / CIDR из static и гаснет после простоя.
 nexus_wireguard_ondemand: false
 nexus_wireguard_ondemand_poll_sec: 15
 nexus_wireguard_ondemand_idle_sec: 300
@@ -231,8 +244,22 @@ nexus_wireguard_domains_seed:
   - downloads.mongodb.org
   - download.redis.io
   - packages.redis.io
+  - dl-cdn.alpinelinux.org
+  # Docker Hub — иначе на хосте без резолва registry-1.docker.io Nexus даёт UnknownHostException / auto-block proxy
+  - registry-1.docker.io
+  - auth.docker.io
+  - index.docker.io
+  - production.cloudflare.docker.com
+# Каждый прогон wireguard.yml: дописать FQDN в общий файл доменов (обход force:false у первичной копии). Пустой список — не трогать.
+nexus_wireguard_domains_ensure_lines:
+  - registry-1.docker.io
+  - auth.docker.io
+  - index.docker.io
+  - production.cloudflare.docker.com
 nexus_wireguard_domain_refresh_interval_sec: 900
 nexus_wireguard_domain_refresh_boot_delay_sec: 120
+# Лимит префиксов в одном awg/wg set (0 = без лимита). «No space left on device» при полном диске часто — лимит netlink из‑за слишком длинного allowed-ips; сначала включите дедуп, при необходимости задайте 512–2048.
+nexus_wireguard_refresh_allowedips_max_entries: 0
 
 nexus_config_maven: true
 nexus_config_pypi: false
