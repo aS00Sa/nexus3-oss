@@ -209,15 +209,10 @@
       - "{{ nexus_installation_dir }}/nexus-latest/etc/scripts"
   when: nexus_version is version_compare('3.1.0', '>=')
 
-- name: Get rest API endpoint (v < 3.8.0)
+- name: Use legacy REST API script endpoint for Nexus < 3.8.0
   ansible.builtin.set_fact:
     nexus_rest_api_endpoint: service/siesta/rest/v1/script
   when: nexus_version is version_compare('3.8.0', '<')
-
-- name: Get rest API endpoint (v >= 3.8.0)
-  ansible.builtin.set_fact:
-    nexus_rest_api_endpoint: service/rest/v1/script
-  when: nexus_version is version_compare('3.8.0', '>=')
 
 - name: Get path to database restore dir (v < 3.11.0)
   ansible.builtin.set_fact:
