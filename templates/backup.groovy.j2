@@ -84,8 +84,18 @@ try {
     FileUtils.copyDirectory(new File(nexusDataDirPath+'/blobs'), new File(CurrentBackupDirPath))
 
     log.info("Wait for temporary db backup task to finish")
-    while (tempBackupTask.currentState.getState().toString() != "WAITING") {
+    int waitSeconds = 0
+    final int maxWaitSeconds = 7200
+    String stateStr
+    while ((stateStr = tempBackupTask.currentState.getState().toString()) != "WAITING") {
+        if (stateStr == "FAILED" || stateStr == "CANCELED") {
+            throw new Exception("Temporary db.backup task ended with state: " + stateStr)
+        }
+        if (waitSeconds >= maxWaitSeconds) {
+            throw new Exception("Temporary db.backup task did not reach WAITING within " + maxWaitSeconds + "s (last state: " + stateStr + ")")
+        }
         TimeUnit.SECONDS.sleep(1)
+        waitSeconds++
     }
     log.info("Remove temporary task")
     tempBackupTask.remove()
@@ -96,5 +106,6 @@ try {
     }
 
 } catch (Exception e) {
-    log.error(e.toString())
+    log.error("Nexus backup script failed", e)
+    throw e
 }
