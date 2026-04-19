@@ -1,0 +1,63 @@
+---
+# Каталоги, архив с контроллера, rsync diff, объявление изменённых groovy в Nexus.
+# Используется из nexus_install.yml и self_service_schedule_only.yml.
+- name: Force (re-)registration of groovy scripts (purge reference dir)
+  ansible.builtin.file:
+    path: "{{ nexus_data_dir }}/groovy-raw-scripts"
+    state: absent
+  when: nexus_force_groovy_scripts_registration | default(false)
+
+- name: Create directories to hold current groovy scripts for reference
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  with_items:
+    - "{{ nexus_data_dir }}/groovy-raw-scripts/current"
+    - "{{ nexus_data_dir }}/groovy-raw-scripts/new"
+
+- name: Archive scripts
+  become: false
+  community.general.archive:
+    path: "{{ role_path }}/files/groovy/*"
+    dest: "{{ nexus_local_tmp_dir }}/nexus-upload-groovy-scripts.tar.gz"
+    mode: "0644"
+  check_mode: false
+  run_once: true
+  delegate_to: localhost
+
+- name: Upload new scripts
+  ansible.builtin.unarchive:
+    src: "{{ nexus_local_tmp_dir }}/nexus-upload-groovy-scripts.tar.gz"
+    dest: "{{ nexus_data_dir }}/groovy-raw-scripts/new/"
+    mode: "0644"
+
+- name: Upload scripts with meaningful message on failure
+  block:
+    - name: Sync new scripts to old and get differences
+      ansible.builtin.shell:
+        cmd: >
+          set -o pipefail &&
+          rsync -ric {{ nexus_data_dir }}/groovy-raw-scripts/new/ {{ nexus_data_dir }}/groovy-raw-scripts/current/
+          | cut -d" " -f 2 | sed "s/\.groovy//g"
+        executable: /bin/bash
+      register: nexus_groovy_files_changed
+      check_mode: false
+      changed_when: false
+
+  rescue:
+    - name: Rsync error information
+      ansible.builtin.debug:
+        msg:
+          - A task involving running rsync on the host just failed, most probably because rsync is not installed.
+          - Please make sure rsync is installed on your host or double check the above error and try again.
+
+    - name: Fail on rsync error
+      ansible.builtin.fail:
+        msg: Rsync error - See debug message above
+
+- name: Declare new or changed groovy scripts in nexus
+  ansible.builtin.include_tasks: declare_script_each.yml
+  with_items: "{{ nexus_groovy_files_changed.stdout_lines }}"

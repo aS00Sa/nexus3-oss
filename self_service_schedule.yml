@@ -1,0 +1,20 @@
+---
+# Только создание/обновление плановых заданий на уже установленном Nexus (задачи Admin → Tasks):
+# бэкап (script + backup.groovy.j2), Docker GC, compact blobstore и др. из nexus_scheduled_tasks / 11-backup.yml.
+# Установка Nexus, nexus.vmoptions и полный прогон роли не выполняются.
+#
+# Переменные: nexus_scheduled_tasks, nexus_backup_*, см. defaults/main.yml и group_vars/nexus/.
+#
+# Пример (как в ansible-role-gitlab/self_service_schedule.yml):
+#   ANSIBLE_STDOUT_CALLBACK=yaml ANSIBLE_CONFIG="$PWD/ansible.cfg" \
+#   ansible-playbook -i inventory-infra-btnxlocal.ini self_service_schedule.yml \
+#     -u root --private-key ~/.ssh/id_ed25519
+#
+- name: Nexus self-service scheduled jobs only
+  hosts: nexus
+  become: true
+  tasks:
+    - name: Apply scheduled-task provisioning from this role
+      ansible.builtin.include_role:
+        name: "{{ playbook_dir }}"
+        tasks_from: self_service_schedule_only

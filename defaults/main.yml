@@ -36,6 +36,7 @@ nexus_onboarding_wizard: false
 # Skips provisioning block 1 (LDAP, blobstores, content selectors), cleanup policies, RBAC users, anonymous/realms/mail/branding/scheduled tasks.
 # Still runs nexus_install (idempotent). Use after changing nexus_repos_* / group_vars APT-YUM definitions.
 nexus_sync_repositories_only: false
+# Плановые задания только через API: ansible-playbook … self_service_schedule.yml (tasks_from self_service_schedule_only).
 
 # These are the default values for JVM Ram
 # don't touch those unless you have read

@@ -310,6 +310,8 @@ sudo dnf upgrade --refresh
 
 Каталог бэкапов по умолчанию: **`/var/nexus-backup`**. Для сетевого/S3-монтажа можно отключить создание каталога ролью: **`nexus_backup_dir_create: false`**.
 
+Чтобы **только** обновить плановые задания (бэкап, Docker GC, compact и т.д.) на уже работающем Nexus, без полной установки роли, используйте плейбук **`self_service_schedule.yml`** (аналог `self_service_schedule.yml` в ansible-role-gitlab): он вызывает `tasks_from: self_service_schedule_only`.
+
 ### Восстановление
 
 Как в основном README: запуск плейбука с extra-var **`nexus_restore_point=<YYYY-MM-dd-HH-mm-ss>`** (имя каталога бэкапа без префикса `blob-backup-`). Подробности и ограничения — раздел **Backups** в [README.md](README.md).

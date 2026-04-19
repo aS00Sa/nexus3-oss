@@ -1,0 +1,27 @@
+---
+# Только плановые задания Nexus через API (cron-задачи, бэкап по расписанию и т.д.).
+# Без установки/обновления пакета Nexus и без полного прогона main.yml.
+# Нужен уже запущенный Nexus, доступ по nexus_api_* и корректные пароли (см. nexus_api_auth.yml).
+- name: Force scheduled-task provisioning for this run
+  ansible.builtin.set_fact:
+    nexus_run_provisionning: true
+    nexus_sync_repositories_only: false
+
+- name: Check requirements and deprecated features/vars
+  ansible.builtin.import_tasks: requirements_and_deprecated.yml
+
+- name: Include OS specific variables
+  ansible.builtin.include_vars: configure-{{ ansible_os_family }}.yml
+
+- name: Digest splited blob list var
+  ansible.builtin.include_vars: blob_vars.yml
+  when: nexus_blob_split | bool
+
+- name: Resolve Nexus admin password and accept EULA
+  ansible.builtin.import_tasks: nexus_api_auth.yml
+
+- name: Upload and register Nexus groovy API scripts
+  ansible.builtin.import_tasks: nexus_groovy_scripts_register.yml
+
+- name: Configure Nexus scheduled tasks (backup, maintenance scripts)
+  ansible.builtin.include_tasks: nexus_scheduled_tasks.yml
