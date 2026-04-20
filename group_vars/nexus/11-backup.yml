@@ -1,5 +1,6 @@
 ---
-# Резервное копирование БД Nexus (Orient) и blobstore в каталог nexus_backup_dir (скрипт в Nexus).
+# Резервное копирование БД Nexus (H2/Orient) и blobstore в каталог nexus_backup_dir (скрипт в Nexus).
+# Встроенная задача бэкапа БД получает путь относительно nexus_data_dir; при «Error [0s]» см. nexus_backup_db_task_type_id в defaults.
 # Расписание: Quartz cron, раз в неделю. Ротация хранит несколько последних полных копий.
 nexus_backup_configure: true
 nexus_backup_schedule_type: cron

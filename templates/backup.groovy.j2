@@ -6,6 +6,8 @@ import org.sonatype.nexus.scheduling.TaskScheduler
 import org.sonatype.nexus.scheduling.TaskInfo
 import org.sonatype.nexus.scheduling.schedule.Schedule
 import java.util.concurrent.TimeUnit
+import java.nio.file.Path
+import java.nio.file.Paths
 
 
 /**
@@ -28,6 +30,18 @@ nexusBackupKeepRotations = "{{ nexus_backup_keep_rotations }}".toInteger()
 
 backupDateString = LocalDateTime.now().format(DateTimeFormatter.ofPattern('yyyy-MM-dd-HH-mm-ss'))
 CurrentBackupDirPath = nexusBackupDirPath+'/blob-backup-'+backupDateString
+
+/** Nexus H2 backup task expects a path relative to the data directory (not an absolute path). */
+Path dataRoot = Paths.get(nexusDataDirPath).toAbsolutePath().normalize()
+Path dbDir = Paths.get(CurrentBackupDirPath, "db").toAbsolutePath().normalize()
+String dbBackupLocation
+try {
+    dbBackupLocation = dataRoot.relativize(dbDir).toString().replace('\\', '/')
+} catch (IllegalArgumentException e) {
+    dbBackupLocation = dbDir.toString()
+    log.warn("Could not relativize DB backup path to data dir ({}), using absolute path — H2 task may reject this: {}", nexusDataDirPath, dbBackupLocation)
+}
+log.info("Embedded DB backup location for built-in task: {}", dbBackupLocation)
 
 /** Helper function to rotate backups */
 def rotateBackup() {
@@ -69,36 +83,70 @@ try {
         rotateBackup()
     }
 
-    log.info("Create a temporary task to backup nexus db in {}/db", CurrentBackupDirPath)
+    log.info("Create a temporary task to backup nexus db at {} (under {})", dbBackupLocation, CurrentBackupDirPath)
     TaskScheduler taskScheduler = container.lookup(TaskScheduler.class.getName())
-    TaskConfiguration tempBackupTaskConfiguration = taskScheduler.createTaskConfigurationInstance('db.backup')
-    tempBackupTaskConfiguration.setName('Temporary db.backup task')
-    tempBackupTaskConfiguration.setString('location', CurrentBackupDirPath+'/db')
-    Schedule schedule = taskScheduler.scheduleFactory.manual()
-    TaskInfo tempBackupTask = taskScheduler.scheduleTask(tempBackupTaskConfiguration, schedule)
+    List<String> candidateTaskTypeIds = [
+        '{{ nexus_backup_db_task_type_id }}',
+        'db.backup',
+        'h2.backup',
+        'database.backup'
+    ].findAll { it != null && it.toString().trim().length() > 0 }.collect { it.toString().trim() }.unique()
 
-    log.info("Run the temporary db backup task")
-    tempBackupTask.runNow()
+    TaskConfiguration tempBackupTaskConfiguration = null
+    String resolvedDbTaskTypeId = null
+    for (String candidateTypeId : candidateTaskTypeIds) {
+        try {
+            tempBackupTaskConfiguration = taskScheduler.createTaskConfigurationInstance(candidateTypeId)
+            resolvedDbTaskTypeId = candidateTypeId
+            break
+        } catch (IllegalArgumentException ignored) {
+            log.debug("Task type-id {} is not available in this Nexus version", candidateTypeId)
+        }
+    }
+    TaskInfo tempBackupTask = null
+    if (tempBackupTaskConfiguration == null) {
+        if (Boolean.valueOf("{{ nexus_backup_allow_blob_only_fallback | default(true) }}")) {
+            log.warn("Could not find supported DB backup task type-id (tried: {}). Continue with blob-only backup. "
+                + "Set nexus_backup_db_task_type_id to a valid type-id or disable fallback with "
+                + "nexus_backup_allow_blob_only_fallback=false to fail hard.", candidateTaskTypeIds.join(', '))
+        } else {
+            throw new Exception("Could not find supported DB backup task type-id. Tried: " + candidateTaskTypeIds.join(', ')
+                + ". Set nexus_backup_db_task_type_id in vars to the actual type-id from this Nexus instance.")
+        }
+    } else {
+        log.info("Using DB backup task type-id: {}", resolvedDbTaskTypeId)
+        tempBackupTaskConfiguration.setName('Temporary db.backup task')
+        tempBackupTaskConfiguration.setString('location', dbBackupLocation)
+        Schedule schedule = taskScheduler.scheduleFactory.manual()
+        tempBackupTask = taskScheduler.scheduleTask(tempBackupTaskConfiguration, schedule)
+
+        log.info("Run the temporary db backup task")
+        tempBackupTask.runNow()
+    }
 
     log.info("Copy the blobstores into {}", CurrentBackupDirPath)
     FileUtils.copyDirectory(new File(nexusDataDirPath+'/blobs'), new File(CurrentBackupDirPath))
 
-    log.info("Wait for temporary db backup task to finish")
-    int waitSeconds = 0
-    final int maxWaitSeconds = 7200
-    String stateStr
-    while ((stateStr = tempBackupTask.currentState.getState().toString()) != "WAITING") {
-        if (stateStr == "FAILED" || stateStr == "CANCELED") {
-            throw new Exception("Temporary db.backup task ended with state: " + stateStr)
+    if (tempBackupTask != null) {
+        log.info("Wait for temporary db backup task to finish")
+        int waitSeconds = 0
+        final int maxWaitSeconds = 7200
+        String stateStr
+        while ((stateStr = tempBackupTask.currentState.getState().toString()) != "WAITING") {
+            if (stateStr == "FAILED" || stateStr == "CANCELED") {
+                throw new Exception("Temporary db.backup task ended with state: " + stateStr)
+            }
+            if (waitSeconds >= maxWaitSeconds) {
+                throw new Exception("Temporary db.backup task did not reach WAITING within " + maxWaitSeconds + "s (last state: " + stateStr + ")")
+            }
+            TimeUnit.SECONDS.sleep(1)
+            waitSeconds++
         }
-        if (waitSeconds >= maxWaitSeconds) {
-            throw new Exception("Temporary db.backup task did not reach WAITING within " + maxWaitSeconds + "s (last state: " + stateStr + ")")
-        }
-        TimeUnit.SECONDS.sleep(1)
-        waitSeconds++
+        log.info("Remove temporary task")
+        tempBackupTask.remove()
+    } else {
+        log.warn("DB backup step skipped because no supported DB backup task type-id is available.")
     }
-    log.info("Remove temporary task")
-    tempBackupTask.remove()
 
     /** Post backup rotation */
     if (nexusBackupRotate && !nexusBackupRotateFirst) {

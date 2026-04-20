@@ -64,6 +64,10 @@ nexus_backup_cron: "0 0 21 * * ?" # See cron expression in nexus create task GUI
 nexus_backup_rotate: false # Shall we rotate backups
 nexus_backup_rotate_first: false # Shall we rotate before making the current backup ?
 nexus_backup_keep_rotations: 4 # Keep 4 backup rotations by default (current + last 3)
+# Встроенная задача бэкапа БД (H2/Orient): typeId для TaskScheduler; при сбое см. GET .../tasks/templates
+nexus_backup_db_task_type_id: db.backup
+# Если встроенной задачи бэкапа БД нет (например при внешней БД), не падать и делать backup только blobstore.
+nexus_backup_allow_blob_only_fallback: true
 
 # Nexus restore procedure:
 # run ansible-playbook example.yml -e "nexus_restore_point=(# date of choice -> %Y-%m-%d-%H-%M-%S #)"
