@@ -37,10 +37,11 @@
 
 ## Пример деплоя (`install.yml`)
 
-**Деплой по умолчанию — из консоли WSL** (bash в Linux под Windows). Переменные для **`[nexus]`** — в **`group_vars/nexus/`** рядом с плейбуком; префиксы `01-` … `15-` задают порядок слияния файлов.
+**Деплой по умолчанию — из консоли WSL** (bash в Linux под Windows). Переменные для **`[nexus]`** — в **`group_vars/nexus/`** рядом с плейбуком; префиксы `00-` … `15-` задают порядок слияния файлов.
 
 | Файл | Назначение |
 |------|------------|
+| `00-system-dns.yml` | Системный DNS на хосте (`systemd-resolved`) + preflight-проверка `getent` перед ролью |
 | `01-core.yml` | Версия, архив, пароль админа, hostname, timezone, bearer token |
 | `02-docker-repos.yml` | Docker proxy/hosted/group, cleanup policies |
 | `03-npm-repos.yml` | NPM (в т.ч. **registry.npmjs.org** — PM2, @mongodb/*, @hashicorp/*) |

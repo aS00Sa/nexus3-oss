@@ -1,0 +1,21 @@
+---
+# Системный DNS на целевом хосте Nexus (выполняется pre_tasks в install.yml).
+nexus_manage_system_dns: true
+
+# Основные DNS для systemd-resolved.
+nexus_system_dns_servers:
+  - 1.1.1.1
+  - 8.8.8.8
+
+# Запасные DNS, если основные недоступны.
+nexus_system_dns_fallback_servers:
+  - 9.9.9.9
+  - 1.0.0.1
+
+# Хосты для preflight-проверки резолва перед применением роли Nexus.
+nexus_dns_healthcheck_hosts:
+  - docker.com
+  - 2ip.ru
+
+nexus_dns_healthcheck_retries: 4
+nexus_dns_healthcheck_delay: 3

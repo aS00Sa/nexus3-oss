@@ -3,5 +3,69 @@
 - name: Deploy Nexus OSS
   hosts: nexus
   become: true
+  pre_tasks:
+    - name: Ensure resolved drop-in directory exists
+      ansible.builtin.file:
+        path: /etc/systemd/resolved.conf.d
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+      when: nexus_manage_system_dns | bool
+      tags: [dns, preflight]
+
+    - name: Configure systemd-resolved upstream DNS
+      ansible.builtin.copy:
+        dest: /etc/systemd/resolved.conf.d/99-ansible-nexus-dns.conf
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          [Resolve]
+          DNS={{ nexus_system_dns_servers | join(' ') }}
+          FallbackDNS={{ nexus_system_dns_fallback_servers | join(' ') }}
+          DNSStubListener=yes
+      register: nexus_resolved_dns_dropin
+      when: nexus_manage_system_dns | bool
+      tags: [dns, preflight]
+
+    - name: Ensure /etc/resolv.conf points to systemd stub
+      ansible.builtin.file:
+        src: /run/systemd/resolve/stub-resolv.conf
+        dest: /etc/resolv.conf
+        state: link
+        force: true
+      register: nexus_resolv_conf_link
+      when: nexus_manage_system_dns | bool
+      tags: [dns, preflight]
+
+    - name: Restart systemd-resolved after DNS config update
+      ansible.builtin.systemd:
+        name: systemd-resolved
+        state: restarted
+        enabled: true
+      when:
+        - nexus_manage_system_dns | bool
+        - nexus_resolved_dns_dropin.changed or nexus_resolv_conf_link.changed
+      tags: [dns, preflight]
+
+    - name: Ensure systemd-resolved is running
+      ansible.builtin.systemd:
+        name: systemd-resolved
+        state: started
+        enabled: true
+      when: nexus_manage_system_dns | bool
+      tags: [dns, preflight]
+
+    - name: Verify DNS resolution before Nexus role
+      ansible.builtin.command: "getent hosts {{ item }}"
+      register: nexus_dns_healthcheck_result
+      changed_when: false
+      retries: "{{ nexus_dns_healthcheck_retries }}"
+      delay: "{{ nexus_dns_healthcheck_delay }}"
+      until: nexus_dns_healthcheck_result.rc == 0
+      loop: "{{ nexus_dns_healthcheck_hosts }}"
+      when: nexus_manage_system_dns | bool
+      tags: [dns, preflight]
   roles:
     - role: ansible-role-nexus3-oss
